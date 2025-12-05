@@ -4,6 +4,8 @@ contains functions for backing up messages
 import os
 from os.path import join as pj
 from datetime import timedelta, datetime
+import mimetypes
+from urllib.parse import urlparse
 import discord
 from src.core.init import cfg, httpx_client, bot, tz, Log
 
@@ -36,6 +38,18 @@ class Backup:
                 cleaned_parts.append(cleaned)
         return pj(self.backup_root, *cleaned_parts)
 
+    def _get_extension(self, url, content_type=None):
+        """
+        Derive a safe file extension from the url or response content type.
+        """
+        parsed = urlparse(url)
+        basename = os.path.basename(parsed.path.rstrip('/'))
+        _, ext = os.path.splitext(basename)
+        if not ext and content_type:
+            guessed = mimetypes.guess_extension(content_type.split(';')[0].strip())
+            ext = guessed or ''
+        return ext or '.bin'
+
     async def add_attachment(self, url, attname, md_dir, att_dir):
         """
         Add an attachment to the backup.
@@ -53,15 +67,14 @@ class Backup:
         if abs_att_dir not in self.exists:
             os.makedirs(abs_att_dir, exist_ok=True)
             self.exists[abs_att_dir] = set(os.listdir(abs_att_dir))
-        suffix = url.split('.')[-1]
-        suffix = suffix.split('?')[0]
-        filename = f'{attname}.{suffix}'
-        relpath = pj(att_dir, filename)
-        if filename in self.exists[abs_att_dir]:
-            return f'[{attname}]({relpath})'
-        abspath = pj(abs_att_dir, filename)
         chunk_size = cfg['backup']['chunk_size']
         async with httpx_client.stream('GET', url) as r:
+            ext = self._get_extension(url, r.headers.get('content-type'))
+            filename = f'{attname}{ext}'
+            relpath = pj(att_dir, filename)
+            if filename in self.exists[abs_att_dir]:
+                return f'[{attname}]({relpath})'
+            abspath = pj(abs_att_dir, filename)
             with open(abspath, 'wb') as f:
                 async for chunk in r.aiter_bytes(chunk_size):
                     f.write(chunk)
