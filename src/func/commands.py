@@ -9,7 +9,7 @@ import discord
 from discord.ui import Button, View, Select
 from src.core.init import cfg, bot, httpx_client, tz
 from src.core.cortana import cortana
-from src.core.backup import dbx_backup_by_date
+from src.core.backup import backup_by_date
 from src.core.tools import identify, format_units, modify_board, warning
 
 
@@ -416,7 +416,7 @@ class Cmd:
             message (discord.Message): The message triggering the command.
         """
         today = datetime.now(tz).date()
-        await dbx_backup_by_date(
+        await backup_by_date(
             message=message, start_date=today - timedelta(days=1), end_date=today
         )
 
@@ -438,6 +438,4 @@ class Cmd:
         end_date = (
             datetime.strptime(end_date_str, "%y%m%d").date() if end_date_str else None
         )
-        await dbx_backup_by_date(
-            message=message, start_date=start_date, end_date=end_date
-        )
+        await backup_by_date(message=message, start_date=start_date, end_date=end_date)

@@ -83,14 +83,15 @@ async def backup_all(ctx, start_date_str: str = None, end_date_str: str = None):
     await Cmd.backup_all(ctx, start_date_str, end_date_str)
 
 
-@tasks.loop(time=datetime_time(0, 5, tzinfo=tz))
+@tasks.loop(time=datetime_time(0, 0, tzinfo=tz))
 async def daily():
     try:
         await Func.daily()
     except Exception as e:
         log.error(f"Daily failed: {e}")
         await warning(
-            f"每日备份失败: {e}", channel=bot.get_channel(cfg["daily"]["channel"])
+            f"每日备份失败: {e}",
+            channel=bot.get_channel(cfg["channel"][cfg["daily"]["channel"]]),
         )
 
 

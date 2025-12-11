@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import discord
 from src.core.init import cfg, bot, tz
 from src.core.cortana import cortana
-from src.core.backup import dbx_backup_by_date
+from src.core.backup import backup_by_date
 from src.core.tools import warning, daily_report
 
 
@@ -83,7 +83,7 @@ class Func:
         await channel.send(embeds=[shift_embed, online_embed, daily_embed])
         today = datetime.now(tz).date()
         try:
-            await dbx_backup_by_date(
+            await backup_by_date(
                 channel=channel, start_date=today - timedelta(days=1), end_date=today
             )
         except Exception as e:

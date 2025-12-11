@@ -293,9 +293,7 @@ class Backup:
             date += timedelta(days=1)
 
 
-async def dbx_backup_by_date(
-    message=None, channel=None, start_date=None, end_date=None
-):
+async def backup_by_date(message=None, channel=None, start_date=None, end_date=None):
     """
     Backs up different channels to local storage.
 
