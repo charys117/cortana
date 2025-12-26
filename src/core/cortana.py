@@ -32,7 +32,7 @@ class Cortana:
         self.name = name
         self.display_name = cfg["cortana"][name]["display_name"]
         self.color = cfg["cortana"][name]["color"]
-        with open(f"./data/avatars/{self.name}.jpg", "rb") as fp:
+        with open(f"./src/assets/avatars/{self.name.lower()}.jpg", "rb") as fp:
             await bot.user.edit(avatar=fp.read())
         await self.member.edit(nick=self.display_name)
         for role in self.member.roles:

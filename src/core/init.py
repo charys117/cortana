@@ -8,7 +8,7 @@ import yaml
 import coloredlogs
 
 # load cfg
-with open("data/config.yml", "r", encoding="utf-8") as f:
+with open("./config.yml", "r", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 if os.path.exists(".env"):
     import dotenv
