@@ -1,14 +1,19 @@
 // Thin fetch wrapper with bearer-token auth.
-// On 401 it asks the UI for a token (App.vue registers the prompt) and retries.
-
-let tokenPrompt = null; // async () => string | null
-
-export function setTokenPrompt(fn) {
-  tokenPrompt = fn;
-}
+// A 401 raises an error flagged `auth: true`; the UI renders an in-page token
+// gate instead of prompting per call (parallel calls would prompt repeatedly).
 
 function token() {
   return localStorage.getItem("cortana_token") || "";
+}
+
+export const hasToken = () => !!token();
+
+export function setToken(v) {
+  localStorage.setItem("cortana_token", v);
+}
+
+export function clearToken() {
+  localStorage.removeItem("cortana_token");
 }
 
 export async function api(path, opts = {}) {
@@ -18,13 +23,10 @@ export async function api(path, opts = {}) {
     token() ? { Authorization: "Bearer " + token() } : {},
   );
   const r = await fetch(path, opts);
-  if (r.status === 401 && tokenPrompt) {
-    const t = await tokenPrompt();
-    if (t) {
-      localStorage.setItem("cortana_token", t);
-      return api(path, opts);
-    }
-    throw new Error("未授权");
+  if (r.status === 401) {
+    const err = new Error("未授权");
+    err.auth = true;
+    throw err;
   }
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || r.statusText);

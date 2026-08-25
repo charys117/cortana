@@ -39,3 +39,18 @@ with `/api` proxied to a locally running bot on port 8080.
 - `CORTANA_WEB_ENABLED` — set `0` to disable the web UI
 - `CORTANA_CONFIG` — path to the config file, default `./config.yml`
 - `PROXY` — optional HTTP proxy for Discord/httpx
+
+# Development
+
+CI (`.github/workflows/ci.yml`) gates every PR on lint, tests and a Docker
+build. Run the same checks locally:
+
+```bash
+uv sync            # installs dev deps (ruff, pytest)
+uv run ruff check .
+uv run ruff format --check .
+uv run pytest
+```
+
+Images are built and pushed to GHCR by `docker-build.yml` on pushes to
+`main`/`master` and on `v*` / `release-*` tags only.

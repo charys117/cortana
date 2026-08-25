@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from "vue";
-import { setTokenPrompt } from "./api";
+import { setToken } from "./api";
 import { dirty, discard, load, save, store } from "./store";
 import EmojiPicker from "./components/EmojiPicker.vue";
 import PersonasSection from "./sections/PersonasSection.vue";
@@ -23,24 +23,15 @@ const NAV = [
 
 const saving = ref(false);
 
-// --- token dialog (replaces the old prompt()) ---
-const tokenDialog = ref(false);
+// --- in-page token gate (replaces the old blocking prompt()) ---
 const tokenInput = ref("");
-let tokenResolve = null;
 
-setTokenPrompt(
-  () =>
-    new Promise((resolve) => {
-      tokenResolve = resolve;
-      tokenInput.value = "";
-      tokenDialog.value = true;
-    }),
-);
-
-function submitToken(value) {
-  tokenDialog.value = false;
-  tokenResolve?.(value);
-  tokenResolve = null;
+function submitToken() {
+  const v = tokenInput.value.trim();
+  if (!v) return;
+  setToken(v);
+  tokenInput.value = "";
+  load();
 }
 
 function scrollTo(id) {
@@ -92,6 +83,23 @@ onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
 
     <main>
       <div v-if="store.loading" v-loading="true" class="placeholder" element-loading-text="加载中…" />
+      <div v-else-if="store.needToken" class="placeholder">
+        <div class="token-gate">
+          <h1>🔐 需要访问令牌</h1>
+          <div class="hint">CORTANA_WEB_TOKEN · 令牌保存在本浏览器 localStorage 中</div>
+          <el-input
+            v-model="tokenInput"
+            type="password"
+            show-password
+            placeholder="粘贴访问令牌"
+            @keydown.enter="submitToken"
+          />
+          <el-button type="primary" :disabled="!tokenInput.trim()" @click="submitToken">
+            进入配置台
+          </el-button>
+          <div v-if="store.tokenMessage" class="gate-err">{{ store.tokenMessage }}</div>
+        </div>
+      </div>
       <div v-else-if="store.error" class="placeholder">
         <el-result icon="error" title="加载失败" :sub-title="store.error">
           <template #extra>
@@ -122,23 +130,6 @@ onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
       <el-button type="success" :loading="saving" @click="doSave">保存到集群</el-button>
     </div>
   </transition>
-
-  <el-dialog v-model="tokenDialog" title="需要访问令牌" width="380px" @closed="submitToken(null)">
-    <div class="hint token-hint">请输入 CORTANA_WEB_TOKEN 环境变量中配置的令牌</div>
-    <el-input
-      v-model="tokenInput"
-      type="password"
-      show-password
-      placeholder="访问令牌"
-      @keydown.enter="tokenInput && submitToken(tokenInput)"
-    />
-    <template #footer>
-      <el-button @click="submitToken(null)">取消</el-button>
-      <el-button type="primary" :disabled="!tokenInput" @click="submitToken(tokenInput)">
-        确定
-      </el-button>
-    </template>
-  </el-dialog>
 
   <EmojiPicker />
 </template>
@@ -211,7 +202,16 @@ main :deep(section > h2) {
 .rise-enter-active, .rise-leave-active { transition: all 0.2s ease; }
 .rise-enter-from, .rise-leave-to { opacity: 0; transform: translate(-50%, 12px); }
 
-.token-hint { margin-bottom: 10px; }
+.token-gate {
+  max-width: 340px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+.token-gate h1 { font-size: 18px; margin: 0; }
+.gate-err { font-size: 13px; color: var(--el-color-danger); }
 
 @media (max-width: 900px) {
   aside { display: none; }

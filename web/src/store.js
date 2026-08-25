@@ -1,6 +1,6 @@
 import { computed, reactive } from "vue";
 import { ElMessage } from "element-plus";
-import { getConfig, getGuild, putConfig } from "./api";
+import { clearToken, getConfig, getGuild, hasToken, putConfig } from "./api";
 
 export const store = reactive({
   config: null, // editable copy, mutated in place by sections
@@ -8,6 +8,8 @@ export const store = reactive({
   guild: null, // /api/guild payload; null while the bot is offline
   loading: true,
   error: "",
+  needToken: false, // unauthorized: show the in-page token gate
+  tokenMessage: "", // extra hint on the gate (e.g. stored token expired)
 });
 
 export const dirty = computed(
@@ -22,13 +24,19 @@ export const members = computed(() =>
 export async function load() {
   store.loading = true;
   store.error = "";
+  store.needToken = false;
   try {
     const [c, g] = await Promise.all([getConfig(), getGuild().catch(() => null)]);
     store.config = c.config;
     store.savedJson = JSON.stringify(c.config);
     store.guild = g;
   } catch (e) {
-    store.error = e.message;
+    if (e.auth) {
+      store.needToken = true;
+      store.tokenMessage = hasToken() ? "令牌无效或已过期, 请重新输入" : "";
+    } else {
+      store.error = e.message;
+    }
   } finally {
     store.loading = false;
   }
@@ -40,7 +48,12 @@ export async function save() {
     store.savedJson = JSON.stringify(store.config);
     ElMessage.success("已保存并热更新");
   } catch (e) {
-    ElMessage.error("保存失败: " + e.message);
+    if (e.auth) {
+      clearToken();
+      ElMessage.error("令牌无效或已过期, 刷新页面后重新输入");
+    } else {
+      ElMessage.error("保存失败: " + e.message);
+    }
   }
 }
 
