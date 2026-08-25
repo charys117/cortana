@@ -1,10 +1,10 @@
 name: Build and push Docker image to GHCR
 
+# PR builds are validated by ci.yml; this workflow only publishes images.
 on:
   push:
     branches: [ "main", "master" ]
     tags: [ "v*", "release-*" ]
-  pull_request:
 
 # Required for ghcr.io publish
 permissions:
@@ -55,7 +55,7 @@ jobs:
           # If your Dockerfile is not at the repo root, change this path
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
