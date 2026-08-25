@@ -1,0 +1,67 @@
+# Sanitized example config. Copy to config.yml and fill in your own values,
+# or edit everything through the web UI (see README).
+guild: MyGuild
+guild_id: 123456789012345678
+timezone: -8
+# the two members who use the bot; each is the other's notification receiver
+pair:
+  - alice
+  - bob
+bark:
+  alice: https://bark.example.com/your-bark-key
+  bob: https://bark.example.com/another-bark-key
+  post:
+    title: Cortana
+    body: ""
+    icon: https://example.com/icon.jpg
+    group: Cortana
+emoji:
+  cortana: <:Cortana:000000000000000000>
+  rank1: <:rank1:000000000000000000>
+  fate: <:fate:000000000000000000>
+cortana:
+  cortana:
+    display_name: Cortana
+    color: 3447003
+    online: Cortana is online
+    offline: Cortana is offline
+awake_notify:
+  alice: Bob is awake!
+  bob: Alice is awake!
+archive_keyword:
+  food:
+    - food
+  meme:
+    - meme
+board:
+  alice:
+    channel: a-board
+    # units[i] is the emoji for the 10**i place of the score
+    units:
+      - ':heart:'
+      - ':heartbeat:'
+    title: '**CURRENT**:'
+    response: score
+  bob:
+    channel: b-board
+    units:
+      - ':coin:'
+      - ':moneybag:'
+    title: '**CURRENT**:'
+    response: score
+award:
+  alice:
+    rank1:
+      - rank1     # key in the emoji map
+      - 4286945   # badge color
+archive_embed:
+  video:
+    - https://www.bilibili.com/video
+    - https://b23.tv
+  music:
+    - https://open.spotify.com
+backup:
+  local_folder: ./backup
+  chunk_size: 4194304
+daily:
+  channel: night

@@ -157,6 +157,7 @@ name = "cortana"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "coloredlogs" },
     { name = "httpx" },
     { name = "py-cord" },
@@ -170,6 +171,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp", specifier = ">=3.9" },
     { name = "coloredlogs", specifier = ">=15.0.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "py-cord", specifier = ">=2.6.1" },

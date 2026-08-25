@@ -1,7 +1,9 @@
 import re
 from datetime import datetime, timedelta
+
 import discord
-from src.core.init import cfg, bot
+
+from src.core.init import bot, cfg
 
 
 def identify(message):
@@ -15,10 +17,11 @@ def identify(message):
         tuple: A tuple containing the user IDs of the identified author and the corresponding user.
                If the author is not identified, returns (None, None).
     """
-    if message.author.id == cfg["member"]["charys117"]:
-        return "charys117", "nouvee"
-    elif message.author.id == cfg["member"]["nouvee"]:
-        return "nouvee", "charys117"
+    first, second = cfg["pair"]
+    if message.author.id == cfg["member"].get(first):
+        return first, second
+    elif message.author.id == cfg["member"].get(second):
+        return second, first
     else:
         return None, None
 
@@ -36,7 +39,7 @@ def format_units(units, total, row_size=5):
         str: Formatted units.
     """
     if total <= 0:
-        return None
+        return ""
     nums = []
     for i, unit in list(enumerate(units))[::-1]:
         nums.append((total // 10**i, unit))
@@ -82,16 +85,13 @@ async def modify_board(giver, quantity):
     Returns:
         int: The updated amount after modification.
     """
-    channel_name = cfg["board"][giver]["channel"]
-    unit_1 = cfg["board"][giver]["unit_1"]
-    unit_10 = cfg["board"][giver]["unit_10"]
-    title = cfg["board"][giver]["title"]
-    board_channel = bot.get_channel(cfg["channel"][channel_name])
+    board_cfg = cfg["board"][giver]
+    board_channel = bot.get_channel(cfg["channel"][board_cfg["channel"]])
     board = (await board_channel.history(limit=1).flatten())[0]
     amount = int(re.search(r"\n[-0-9]+", board.content).group().strip("\n"))
     amount += quantity
-    units = format_units([unit_1, unit_10], amount)
-    new_board = f"{title}:\n{units}{amount}"
+    units = format_units(board_cfg["units"], amount)
+    new_board = f"{board_cfg['title']}\n{units}{amount}"
     if board.author == bot.user:
         await board.edit(content=new_board)
     else:

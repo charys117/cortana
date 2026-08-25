@@ -27,5 +27,8 @@ COPY run.py ./
 # Compile application code to bytecode
 RUN python -m compileall src/ run.py
 
+# Config web UI
+EXPOSE 8080
+
 # Default command runs your launcher, which invokes .venv/bin/python
 CMD ["python", "run.py"]

@@ -2,15 +2,17 @@
 This module contains functions that handle various commands in a Discord bot.
 """
 
-import re
 import random
+import re
 from datetime import datetime, timedelta
+
 import discord
-from discord.ui import Button, View, Select
-from src.core.init import cfg, bot, httpx_client, tz
-from src.core.cortana import cortana
+from discord.ui import Button, Select, View
+
 from src.core.backup import backup_by_date
-from src.core.tools import identify, format_units, modify_board, warning
+from src.core.cortana import cortana
+from src.core.init import bot, cfg, httpx_client, tz
+from src.core.tools import format_units, identify, modify_board, warning
 
 
 class Cmd:
@@ -92,7 +94,9 @@ class Cmd:
                 await reward.delete()
             sender, _ = identify(message)
             # build embed
-            reward_text = format_units([cfg["board"][sender]["unit_1"]], attr["reward"])
+            reward_text = format_units(
+                cfg["board"][sender]["units"][:1], attr["reward"]
+            )
             title_text = f"**悬赏#{attr['number']}**"
             description = f"类型: {attr['type']}\n内容: {attr['content']}\n"
             description += f"有效时间: {attr['time']}\n" if attr["time"] else ""
@@ -174,6 +178,7 @@ class Cmd:
         """
         night_ch = bot.get_channel(cfg["channel"]["night"])
         await message.respond(embed=discord.Embed(description="开始转发"))
+        start = None
         async for m in night_ch.history(limit=None):
             if (
                 m.author == bot.user
@@ -255,8 +260,8 @@ class Cmd:
                     await warning("该悬赏之前已完成, 请重新确认", message=message)
                     return
                 await m.unpin()
-                reward_emoji = cfg["board"][giver]["unit_1"]
-                reward = len(re.compile(reward_emoji).findall(content))
+                reward_emoji = cfg["board"][giver]["units"][0]
+                reward = len(re.findall(re.escape(reward_emoji), content))
                 new_content = (
                     f"~~{content.split('状态')[0]}~~状态: 已完成{succuess_emoji}"
                 )
@@ -267,7 +272,7 @@ class Cmd:
                 response = cfg["board"][giver]["response"]
                 congrat_embed = discord.Embed(
                     title="**CONGRATULATIONS!!**",
-                    description=f"悬赏{index}已完成{succuess_emoji}\n恭喜<@{cfg['user'][sender]}>获得{reward_emoji}x{reward}\n{response}: {amount}",
+                    description=f"悬赏{index}已完成{succuess_emoji}\n恭喜<@{cfg['member'][sender]}>获得{reward_emoji}x{reward}\n{response}: {amount}",
                 )
                 await message.respond(embed=congrat_embed)
                 # response
@@ -405,7 +410,6 @@ class Cmd:
                 embeds = aim_message.embeds
                 embeds.append(embed)
                 await aim_message.edit(embeds=embeds)
-            return
 
     @staticmethod
     async def backup_daily(message):
