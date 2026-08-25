@@ -1,5 +1,6 @@
 """
-Embedded web UI for editing config.yml with live guild data (emojis, channels, members).
+Embedded web UI for editing the bot config (stored in PostgreSQL) with live
+guild data (emojis, channels, members).
 
 Runs on the bot's event loop. Protect it with CORTANA_WEB_TOKEN when the port is
 reachable from outside the cluster.
@@ -8,11 +9,10 @@ reachable from outside the cluster.
 import os
 import secrets
 
-import yaml
 from aiohttp import web
 
 from src.core.init import (
-    CONFIG_PATH,
+    RUNTIME_KEYS,
     Log,
     bot,
     cfg,
@@ -40,7 +40,7 @@ CONFIG_SCHEMA = {
     "board": dict,
     "award": dict,
     "archive_embed": dict,
-    "backup": dict,
+    "archive": dict,
     "daily": dict,
 }
 REQUIRED_KEYS = ("guild_id", "timezone", "emoji", "cortana", "board")
@@ -86,11 +86,10 @@ async def index(_request):
 
 
 async def get_config(_request):
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        config = normalize_cfg(yaml.safe_load(f))
+    config = {k: v for k, v in cfg.items() if k not in RUNTIME_KEYS}
     # guild_id exceeds JS Number.MAX_SAFE_INTEGER; ship it as a string
     config["guild_id"] = str(config["guild_id"])
-    return web.json_response({"config": config, "path": os.path.abspath(CONFIG_PATH)})
+    return web.json_response({"config": config, "source": "postgresql"})
 
 
 async def put_config(request):
@@ -106,10 +105,10 @@ async def put_config(request):
     error = _validate(config)
     if error:
         return web.json_response({"error": error}, status=400)
-    save_cfg(config)
+    await save_cfg(config)
     if bot.is_ready():
         update_cfg()
-    log.info("config.yml updated via web UI")
+    log.info("config updated via web UI")
     return web.json_response({"ok": True})
 
 

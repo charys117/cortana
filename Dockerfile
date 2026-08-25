@@ -22,7 +22,8 @@ WORKDIR /app
 # Copy .venv and application code
 COPY --from=builder /app/.venv .venv
 COPY src/ src/
-COPY run.py ./
+COPY alembic/ alembic/
+COPY run.py alembic.ini ./
 
 # Compile application code to bytecode
 RUN python -m compileall src/ run.py
@@ -30,5 +31,5 @@ RUN python -m compileall src/ run.py
 # Config web UI
 EXPOSE 8080
 
-# Default command runs your launcher, which invokes .venv/bin/python
-CMD ["python", "run.py"]
+# Apply DB migrations (needs DATABASE_URL), then start the bot
+CMD ["sh", "-c", "alembic upgrade head && python run.py"]

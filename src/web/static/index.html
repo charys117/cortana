@@ -464,7 +464,7 @@ function renderAll() {
   previewFns.length = 0;
   const main = $("#main");
   main.innerHTML = `<h1>Cortana 配置台</h1>
-    <div class="subtitle">修改后点击底部「保存到集群」即时生效 · config.yml 会自动更新</div>`;
+    <div class="subtitle">修改后点击底部「保存到集群」即时生效 · 配置存储于 PostgreSQL</div>`;
   main.append(
     sectionPersonas(), sectionEmoji(), sectionBoard(), sectionAward(),
     sectionNotify(), sectionArchive(), sectionBasic()
@@ -830,15 +830,19 @@ function sectionBasic() {
   s.appendChild(card);
 
   const card2 = document.createElement("div"); card2.className = "card";
-  const h2 = document.createElement("h3"); h2.textContent = "每日任务与备份";
+  const h2 = document.createElement("h3"); h2.textContent = "每日任务与归档";
   card2.appendChild(h2);
+  if (!config.archive) config.archive = {};
   const row3 = document.createElement("div"); row3.className = "row";
   row3.append(
     field("每日播报频道", channelSelect(() => config.daily.channel, v => config.daily.channel = v)),
-    field("备份目录", textInput(() => config.backup.local_folder, v => config.backup.local_folder = v, 180)),
-    field("下载分块大小 (bytes)", numInput(() => config.backup.chunk_size, v => config.backup.chunk_size = v, 140)),
+    field("媒体存储目录", textInput(() => config.archive.media_root, v => config.archive.media_root = v, 180)),
+    field("下载并发数", numInput(() => config.archive.download_concurrency, v => config.archive.download_concurrency = v, 100)),
   );
   card2.appendChild(row3);
+  const archiveHint = document.createElement("div"); archiveHint.className = "hint";
+  archiveHint.textContent = "消息归档到 PostgreSQL (连接串走 DATABASE_URL 环境变量), 附件二进制存到媒体目录";
+  card2.appendChild(archiveHint);
   s.appendChild(card2);
   return s;
 }

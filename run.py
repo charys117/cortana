@@ -3,6 +3,7 @@ from datetime import time as datetime_time
 
 from discord.ext import tasks
 
+import src.core.listeners  # noqa: F401  registers real-time archive listeners
 from src.core.cortana import cortana
 from src.core.init import Log, bot, cfg, tz, update_cfg
 from src.core.tools import warning
@@ -77,16 +78,9 @@ async def award(ctx, title: str, description: str):
     await Cmd.award(ctx, title, description)
 
 
-@bot.command(description="手动每日Dropbox备份", guild_ids=[cfg["guild_id"]])
-async def backup_daily(ctx):
-    await Cmd.backup_daily(ctx)
-
-
-@bot.command(description="手动全部Dropbox备份", guild_ids=[cfg["guild_id"]])
-async def backup_all(
-    ctx, start_date_str: str | None = None, end_date_str: str | None = None
-):
-    await Cmd.backup_all(ctx, start_date_str, end_date_str)
+@bot.command(description="手动归档同步", guild_ids=[cfg["guild_id"]])
+async def sync(ctx, full: bool = False):
+    await Cmd.sync(ctx, full)
 
 
 @tasks.loop(time=datetime_time(0, 0, tzinfo=tz))
@@ -96,11 +90,11 @@ async def daily():
     except Exception as e:
         log.error(f"Daily failed: {e}")
         await warning(
-            f"每日备份失败: {e}",
+            f"每日任务失败: {e}",
             channel=bot.get_channel(cfg["channel"][cfg["daily"]["channel"]]),
         )
 
 
 daily.start()
 
-bot.run(os.environ["CORTANA_TOKEN"])
+bot.run(os.environ["DISCORD_BOT_TOKEN"])

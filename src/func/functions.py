@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 import discord
 
-from src.core.backup import backup_by_date
+from src.core.archiver import archiver
 from src.core.cortana import cortana
 from src.core.init import bot, cfg, tz
 from src.core.tools import daily_report, warning
@@ -83,10 +83,11 @@ class Func:
         )
         daily_embed = await daily_report(datetime.now(tz).date() - timedelta(days=1))
         await channel.send(embeds=[shift_embed, online_embed, daily_embed])
-        today = datetime.now(tz).date()
         try:
-            await backup_by_date(
-                channel=channel, start_date=today - timedelta(days=1), end_date=today
-            )
+            stats = await archiver.sync_all()
+            description = f"归档完成:新消息 {stats['new']},附件下载 {stats['downloaded']}"
+            if stats["failed"]:
+                description += f",下载失败 {stats['failed']}"
+            await channel.send(embed=discord.Embed(description=description))
         except Exception as e:
-            await warning(f"每日备份失败: {e}", channel=channel)
+            await warning(f"每日归档失败: {e}", channel=channel)
