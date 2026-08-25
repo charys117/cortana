@@ -4,12 +4,12 @@ This module contains functions that handle various commands in a Discord bot.
 
 import random
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import discord
 from discord.ui import Button, Select, View
 
-from src.core.backup import backup_by_date
+from src.core.archiver import archiver
 from src.core.cortana import cortana
 from src.core.init import bot, cfg, httpx_client, tz
 from src.core.tools import format_units, identify, modify_board, warning
@@ -412,34 +412,24 @@ class Cmd:
                 await aim_message.edit(embeds=embeds)
 
     @staticmethod
-    async def backup_daily(message):
+    async def sync(message, full=False):
         """
-        Manually backup the Dropbox folder for the previous day.
+        Manually run an archive sync to PostgreSQL.
 
         Args:
-            message (discord.Message): The message triggering the command.
+            message (discord.ApplicationContext): The context triggering the command.
+            full (bool): Rescan the entire history instead of syncing incrementally.
         """
-        today = datetime.now(tz).date()
-        await backup_by_date(
-            message=message, start_date=today - timedelta(days=1), end_date=today
+        await message.respond(
+            embed=discord.Embed(
+                description="开始全量归档..." if full else "开始增量归档..."
+            )
         )
-
-    @staticmethod
-    async def backup_all(message, start_date_str, end_date_str):
-        """
-        Manually backup the Dropbox folder for the specified period.
-
-        Args:
-            message (discord.Message): The message triggering the command.
-            start_date_str (str): The start date of the period.
-            end_date_str (str): The end date of the period.
-        """
-        start_date = (
-            datetime.strptime(start_date_str, "%y%m%d").date()
-            if start_date_str
-            else None
+        stats = await archiver.sync_all(full=full)
+        description = (
+            f"新消息 {stats['new']},更新 {stats['updated']},"
+            f"附件下载 {stats['downloaded']},失败 {stats['failed']}"
         )
-        end_date = (
-            datetime.strptime(end_date_str, "%y%m%d").date() if end_date_str else None
+        await message.channel.send(
+            embed=discord.Embed(title="归档完成", description=description)
         )
-        await backup_by_date(message=message, start_date=start_date, end_date=end_date)

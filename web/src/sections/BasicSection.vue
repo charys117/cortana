@@ -34,24 +34,25 @@ if (!store.config.pair) store.config.pair = [];
     </el-card>
 
     <el-card class="card">
-      <div class="head">每日任务与备份</div>
+      <div class="head">每日任务与归档</div>
       <div class="row">
         <Field v-if="store.config.daily" label="每日播报频道">
           <ChannelSelect v-model="store.config.daily.channel" />
         </Field>
-        <template v-if="store.config.backup">
-          <Field label="备份目录">
-            <el-input v-model="store.config.backup.local_folder" class="w180" />
+        <template v-if="store.config.archive">
+          <Field label="媒体存储目录">
+            <el-input v-model="store.config.archive.media_root" class="w180" />
           </Field>
-          <Field label="下载分块大小 (bytes)">
+          <Field label="下载并发数">
             <el-input-number
-              v-model="store.config.backup.chunk_size"
+              v-model="store.config.archive.download_concurrency"
               controls-position="right"
               class="w160"
             />
           </Field>
         </template>
       </div>
+      <div class="hint">消息归档到 PostgreSQL (连接串走 DATABASE_URL 环境变量), 附件二进制存到媒体目录</div>
     </el-card>
   </section>
 </template>

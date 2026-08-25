@@ -16,7 +16,7 @@ def test_example_config_parses_with_current_schema():
         assert board["units"]
         assert "unit_1" not in board and "unit_10" not in board
     # keys the bot reads unconditionally at startup
-    for key in ("guild_id", "timezone", "cortana", "daily", "backup"):
+    for key in ("guild_id", "timezone", "cortana", "daily", "archive"):
         assert key in cfg
 
 
@@ -37,11 +37,14 @@ def test_normalize_cfg_keeps_new_schema_untouched():
     modern = {
         "pair": ["bob", "alice"],
         "board": {"alice": {"units": [":heart:"]}},
+        "archive": {"media_root": "/data/media"},
     }
     assert normalize_cfg(copy.deepcopy(modern)) == modern
 
 
-def test_save_cfg_roundtrip_preserves_runtime_keys(tmp_path, monkeypatch):
+async def test_save_cfg_roundtrip_preserves_runtime_keys(tmp_path, monkeypatch):
+    # without DATABASE_URL save_cfg persists to the yaml file (yaml-only mode)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     config_path = tmp_path / "config.yml"
     monkeypatch.setattr(init, "CONFIG_PATH", str(config_path))
 
@@ -56,7 +59,7 @@ def test_save_cfg_roundtrip_preserves_runtime_keys(tmp_path, monkeypatch):
             # runtime keys in the payload must not be persisted
             "channel": {"stale": 9},
         }
-        save_cfg(new_cfg)
+        await save_cfg(new_cfg)
 
         on_disk = yaml.safe_load(config_path.read_text(encoding="utf-8"))
         assert on_disk["board"]["alice"]["units"] == [":heart:"]

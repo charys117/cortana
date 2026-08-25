@@ -61,8 +61,8 @@ async def client(cfg, tmp_path, monkeypatch):
     config_path = tmp_path / "config.yml"
     with open(os.environ["CORTANA_CONFIG"], encoding="utf-8") as f:
         config_path.write_text(f.read(), encoding="utf-8")
-    # both the web handlers and save_cfg hold their own CONFIG_PATH reference
-    monkeypatch.setattr(server, "CONFIG_PATH", str(config_path))
+    # without DATABASE_URL save_cfg persists to the yaml file at init.CONFIG_PATH
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setattr(init, "CONFIG_PATH", str(config_path))
     monkeypatch.delenv("CORTANA_WEB_TOKEN", raising=False)
 
@@ -89,7 +89,7 @@ class TestConfigApi:
         resp = await client.put("/api/config", json=config)
         assert resp.status == 200
 
-        on_disk = read_yaml(server.CONFIG_PATH)
+        on_disk = read_yaml(init.CONFIG_PATH)
         assert on_disk["guild_id"] == 123456789012345678
         assert on_disk["board"]["alice"]["title"] == "**UPDATED**:"
         # the hot-applied in-memory cfg matches
@@ -111,7 +111,7 @@ class TestConfigApi:
         resp = await client.put("/api/config", json=config)
         assert resp.status == 400
         # nothing was persisted
-        assert "unknown_key" not in read_yaml(server.CONFIG_PATH)
+        assert "unknown_key" not in read_yaml(init.CONFIG_PATH)
 
     async def test_put_upgrades_legacy_board_schema(self, client):
         config = load_example_config()
@@ -122,7 +122,7 @@ class TestConfigApi:
 
         resp = await client.put("/api/config", json=config)
         assert resp.status == 200
-        on_disk = read_yaml(server.CONFIG_PATH)
+        on_disk = read_yaml(init.CONFIG_PATH)
         assert on_disk["board"]["alice"]["units"] == [":heart:", ":heartbeat:"]
         assert "unit_1" not in on_disk["board"]["alice"]
 

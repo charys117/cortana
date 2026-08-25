@@ -1,5 +1,7 @@
-# Sanitized example config. Copy to config.yml and fill in your own values,
-# or edit everything through the web UI (see README).
+# Sanitized example config. The live config is stored in PostgreSQL (bot_config
+# table) and edited through the web UI; a config.yml is only read once, on first
+# boot against an empty database, to seed it. Copy to config.yml and fill in
+# your own values for that first boot.
 guild: MyGuild
 guild_id: 123456789012345678
 timezone: -8
@@ -60,8 +62,13 @@ archive_embed:
     - https://b23.tv
   music:
     - https://open.spotify.com
-backup:
-  local_folder: ./backup
-  chunk_size: 4194304
+# message archive: messages go to PostgreSQL (connection via the DATABASE_URL
+# env var), attachment binaries go to media_root (mount a PVC there)
+archive:
+  media_root: ./archive/media
+  exclude_channels: []
+  download_concurrency: 6
+  max_download_attempts: 3
+  rescan_days: 7
 daily:
   channel: night
