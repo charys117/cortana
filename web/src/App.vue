@@ -61,6 +61,10 @@ onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
 <template>
   <div class="layout">
     <aside>
+      <div class="brand">
+        <img src="/favicon.svg" alt="" />
+        <span>Cortana 配置台</span>
+      </div>
       <div class="guild-head">
         <template v-if="store.guild">
           <img v-if="store.guild.guild.icon" :src="store.guild.guild.icon" alt="" />
@@ -85,7 +89,8 @@ onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
       <div v-if="store.loading" v-loading="true" class="placeholder" element-loading-text="加载中…" />
       <div v-else-if="store.needToken" class="placeholder">
         <div class="token-gate">
-          <h1>🔐 需要访问令牌</h1>
+          <img class="gate-logo" src="/favicon.svg" alt="" />
+          <h1>需要访问令牌</h1>
           <div class="hint">CORTANA_WEB_TOKEN · 令牌保存在本浏览器 localStorage 中</div>
           <el-input
             v-model="tokenInput"
@@ -149,6 +154,15 @@ aside {
   top: 0;
   height: 100vh;
 }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 12px;
+  font-weight: 700;
+  font-size: 15px;
+}
+.brand img { width: 28px; height: 28px; }
 .guild-head { display: flex; align-items: center; gap: 10px; padding: 8px 10px 16px; }
 .guild-head img { width: 40px; height: 40px; border-radius: 12px; }
 .g-name { font-weight: 700; }
@@ -211,6 +225,7 @@ main :deep(section > h2) {
   text-align: center;
 }
 .token-gate h1 { font-size: 18px; margin: 0; }
+.gate-logo { width: 48px; height: 48px; margin: 0 auto; }
 .gate-err { font-size: 13px; color: var(--el-color-danger); }
 
 @media (max-width: 900px) {
