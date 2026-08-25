@@ -159,6 +159,13 @@ async def get_guild(_request):
     )
 
 
+async def favicon(_request):
+    path = os.path.join(STATIC_DIR, "favicon.svg")
+    if not os.path.exists(path):
+        raise web.HTTPNotFound()
+    return web.FileResponse(path)
+
+
 async def get_avatar(request):
     name = os.path.basename(request.match_info["name"])
     path = os.path.join(AVATAR_DIR, f"{name}.jpg")
@@ -173,6 +180,7 @@ def build_app():
     app.router.add_get("/api/config", get_config)
     app.router.add_put("/api/config", put_config)
     app.router.add_get("/api/guild", get_guild)
+    app.router.add_get("/favicon.svg", favicon)
     app.router.add_get("/avatars/{name}", get_avatar)
     assets = os.path.join(STATIC_DIR, "assets")
     if os.path.isdir(assets):
