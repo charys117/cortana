@@ -41,6 +41,17 @@ The bot serves a config editor (default `http://<host>:8080`) once it is ready:
 - saving writes the config to PostgreSQL and hot-applies it — no restart needed
   (only `timezone` requires a restart)
 
+The frontend is a Vue 3 + Element Plus app in `web/`, served as static files
+by the bot's aiohttp server. The Docker build compiles it automatically; for a
+local (non-Docker) run, build it once first:
+
+```
+cd web && npm install && npm run build   # outputs to src/web/static/
+```
+
+For frontend development, `cd web && npm run dev` starts Vite on port 5173
+with `/api` proxied to a locally running bot on port 8080.
+
 # Environment Variables
 
 - `DISCORD_BOT_TOKEN` — Discord bot token (required)
@@ -54,3 +65,18 @@ The bot serves a config editor (default `http://<host>:8080`) once it is ready:
 - `ARCHIVE_MEDIA_KEY` — base64 32-byte key enabling media encryption at rest;
   strongly recommended
 - `PROXY` — optional HTTP proxy for Discord/httpx
+
+# Development
+
+CI (`.github/workflows/ci.yml`) gates every PR on lint, tests and a Docker
+build. Run the same checks locally:
+
+```bash
+uv sync            # installs dev deps (ruff, pytest)
+uv run ruff check .
+uv run ruff format --check .
+uv run pytest
+```
+
+Images are built and pushed to GHCR by `docker-build.yml` on pushes to
+`main`/`master` and on `v*` / `release-*` tags only.

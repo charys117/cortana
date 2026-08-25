@@ -104,7 +104,9 @@ async def _mark_deleted(message_ids):
 async def archive_on_reaction_add(payload: discord.RawReactionActionEvent):
     try:
         async with get_session() as session:
-            if not await _ensure_message(session, payload.channel_id, payload.message_id):
+            if not await _ensure_message(
+                session, payload.channel_id, payload.message_id
+            ):
                 return
             await _upsert(
                 session,

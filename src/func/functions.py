@@ -85,7 +85,9 @@ class Func:
         await channel.send(embeds=[shift_embed, online_embed, daily_embed])
         try:
             stats = await archiver.sync_all()
-            description = f"归档完成:新消息 {stats['new']},附件下载 {stats['downloaded']}"
+            description = (
+                f"归档完成:新消息 {stats['new']},附件下载 {stats['downloaded']}"
+            )
             if stats["failed"]:
                 description += f",下载失败 {stats['failed']}"
             await channel.send(embed=discord.Embed(description=description))

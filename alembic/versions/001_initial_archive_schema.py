@@ -135,9 +135,7 @@ def upgrade() -> None:
         sa.Column("source_url", sa.Text(), nullable=False),
         sa.Column("content_hash", sa.Text()),
         sa.Column("storage_key", sa.Text()),
-        sa.Column(
-            "encrypted", sa.Boolean(), nullable=False, server_default=sa.false()
-        ),
+        sa.Column("encrypted", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column(
             "downloaded", sa.Boolean(), nullable=False, server_default=sa.false()
         ),
@@ -151,7 +149,10 @@ def upgrade() -> None:
     op.create_table(
         "reactions",
         sa.Column(
-            "message_id", sa.BigInteger(), sa.ForeignKey("messages.id"), primary_key=True
+            "message_id",
+            sa.BigInteger(),
+            sa.ForeignKey("messages.id"),
+            primary_key=True,
         ),
         sa.Column("emoji", sa.Text(), primary_key=True),
         sa.Column("user_id", sa.BigInteger(), primary_key=True),
@@ -162,7 +163,10 @@ def upgrade() -> None:
     op.create_table(
         "sync_status",
         sa.Column(
-            "channel_id", sa.BigInteger(), sa.ForeignKey("channels.id"), primary_key=True
+            "channel_id",
+            sa.BigInteger(),
+            sa.ForeignKey("channels.id"),
+            primary_key=True,
         ),
         sa.Column(
             "last_message_id", sa.BigInteger(), nullable=False, server_default="0"

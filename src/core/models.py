@@ -79,7 +79,9 @@ class Message(Base):
     # display_name at capture time; users.display_name only keeps the latest
     author_name: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     type: Mapped[str] = mapped_column(Text, nullable=False, default="default")
     reply_to_id: Mapped[int | None] = mapped_column(BigInteger)

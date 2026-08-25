@@ -82,7 +82,14 @@ async def auth_middleware(request, handler):
 
 
 async def index(_request):
-    return web.FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    path = os.path.join(STATIC_DIR, "index.html")
+    if not os.path.exists(path):
+        return web.Response(
+            text="前端未构建: 请先运行 cd web && npm install && npm run build",
+            status=503,
+            content_type="text/plain",
+        )
+    return web.FileResponse(path)
 
 
 async def get_config(_request):
@@ -151,6 +158,13 @@ async def get_guild(_request):
     )
 
 
+async def favicon(_request):
+    path = os.path.join(STATIC_DIR, "favicon.svg")
+    if not os.path.exists(path):
+        raise web.HTTPNotFound()
+    return web.FileResponse(path)
+
+
 async def get_avatar(request):
     name = os.path.basename(request.match_info["name"])
     path = os.path.join(AVATAR_DIR, f"{name}.jpg")
@@ -165,7 +179,11 @@ def build_app():
     app.router.add_get("/api/config", get_config)
     app.router.add_put("/api/config", put_config)
     app.router.add_get("/api/guild", get_guild)
+    app.router.add_get("/favicon.svg", favicon)
     app.router.add_get("/avatars/{name}", get_avatar)
+    assets = os.path.join(STATIC_DIR, "assets")
+    if os.path.isdir(assets):
+        app.router.add_static("/assets", assets)
     return app
 
 

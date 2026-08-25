@@ -1,3 +1,14 @@
+FROM node:22-alpine AS webbuilder
+
+WORKDIR /web
+
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+
+COPY web/ ./
+# vite outDir is ../src/web/static -> /src/web/static in this stage
+RUN npm run build
+
 FROM ghcr.io/astral-sh/uv:python3.12-trixie-slim AS builder
 
 
@@ -22,6 +33,7 @@ WORKDIR /app
 # Copy .venv and application code
 COPY --from=builder /app/.venv .venv
 COPY src/ src/
+COPY --from=webbuilder /src/web/static/ src/web/static/
 COPY alembic/ alembic/
 COPY run.py alembic.ini ./
 

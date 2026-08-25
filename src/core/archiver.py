@@ -11,7 +11,7 @@ import asyncio
 import hashlib
 import mimetypes
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from os.path import join as pj
 from urllib.parse import urlparse
 
@@ -35,7 +35,7 @@ from src.core.models import (
 
 
 def utcnow():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def get_extension(url, content_type=None):
@@ -74,7 +74,6 @@ class Archiver:
         self.log = Log.get("archive")
         acfg = cfg["archive"]
         self.media_root = acfg["media_root"]
-        os.makedirs(self.media_root, exist_ok=True)
         self.exclude = set(acfg.get("exclude_channels") or [])
         self.concurrency = acfg.get("download_concurrency", 6)
         self.max_attempts = acfg.get("max_download_attempts", 3)
@@ -337,6 +336,7 @@ class Archiver:
             )
         if not rows:
             return 0, 0
+        os.makedirs(self.media_root, exist_ok=True)
         sem = asyncio.Semaphore(self.concurrency)
         results = await asyncio.gather(*(self._download_one(sem, att) for att in rows))
         async with get_session() as session:

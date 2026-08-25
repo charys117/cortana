@@ -14,7 +14,8 @@ if os.path.exists(".env"):
 
     dotenv.load_dotenv()
 
-# legacy yaml config; only used to seed the database on first boot
+# yaml config: seeds the database on first boot; when DATABASE_URL is unset
+# (local dev, tests) it is the sole config store instead
 CONFIG_PATH = os.environ.get("CORTANA_CONFIG", "./config.yml")
 
 
@@ -42,11 +43,23 @@ def normalize_cfg(cfg):
     return cfg
 
 
+def _load_yaml_cfg():
+    import yaml
+
+    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+        return normalize_cfg(yaml.safe_load(f))
+
+
 async def _bootstrap_cfg():
     """
-    Load the config from Postgres; on first boot, seed it from the legacy
-    yaml file at CONFIG_PATH.
+    Load the config from Postgres; on first boot, seed it from the yaml file
+    at CONFIG_PATH. Without DATABASE_URL, fall back to yaml-only mode.
     """
+    if not os.environ.get("DATABASE_URL"):
+        logging.getLogger("init").warning(
+            "DATABASE_URL not set - config runs in yaml-only mode, archive disabled"
+        )
+        return _load_yaml_cfg()
     conn = await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
         try:
@@ -61,10 +74,7 @@ async def _bootstrap_cfg():
             raise RuntimeError(
                 f"no config in database and no seed file at {CONFIG_PATH}"
             )
-        import yaml
-
-        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            seeded = normalize_cfg(yaml.safe_load(f))
+        seeded = _load_yaml_cfg()
         await conn.execute(
             "INSERT INTO bot_config (id, data) VALUES (1, $1)", json.dumps(seeded)
         )
@@ -96,24 +106,41 @@ def update_cfg():
 
 async def save_cfg(new_cfg):
     """
-    Persist a new config to the database and hot-apply it to the in-memory cfg.
-    Runtime keys (channel/member) are preserved across the swap.
+    Persist a new config (to the database, or to the yaml file in yaml-only
+    mode) and hot-apply it to the in-memory cfg. Runtime keys (channel/member)
+    are preserved across the swap.
     """
-    from sqlalchemy import func
-    from sqlalchemy.dialects.postgresql import insert as pg_insert
-
-    from src.core.db import get_session
-    from src.core.models import BotConfig
-
     new_cfg = normalize_cfg({k: v for k, v in new_cfg.items() if k not in RUNTIME_KEYS})
-    async with get_session() as session:
-        stmt = pg_insert(BotConfig).values(id=1, data=new_cfg)
-        stmt = stmt.on_conflict_do_update(
-            index_elements=["id"],
-            set_={"data": stmt.excluded.data, "updated_at": func.now()},
-        )
-        await session.execute(stmt)
-        await session.commit()
+    if os.environ.get("DATABASE_URL"):
+        from sqlalchemy import func
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        from src.core.db import get_session
+        from src.core.models import BotConfig
+
+        async with get_session() as session:
+            stmt = pg_insert(BotConfig).values(id=1, data=new_cfg)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={"data": stmt.excluded.data, "updated_at": func.now()},
+            )
+            await session.execute(stmt)
+            await session.commit()
+    else:
+        import tempfile
+
+        import yaml
+
+        text = yaml.safe_dump(new_cfg, allow_unicode=True, sort_keys=False)
+        directory = os.path.dirname(os.path.abspath(CONFIG_PATH)) or "."
+        fd, tmp_path = tempfile.mkstemp(dir=directory, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(text)
+            os.replace(tmp_path, CONFIG_PATH)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
     runtime = {k: cfg[k] for k in RUNTIME_KEYS if k in cfg}
     cfg.clear()
     cfg.update(new_cfg)
