@@ -1,5 +1,6 @@
 import random
-from src.core.init import cfg, bot
+
+from src.core.init import bot, cfg
 
 
 class Cortana:

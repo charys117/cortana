@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cortana 配置台</title>
+<style>
+  :root {
+    --bg-0: #1e1f22; --bg-1: #2b2d31; --bg-2: #313338; --bg-3: #383a40;
+    --fg-0: #f2f3f5; --fg-1: #b5bac1; --fg-2: #80848e;
+    --accent: #5865f2; --accent-hover: #4752c4;
+    --green: #23a55a; --red: #f23f43; --yellow: #f0b232;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "gg sans", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+    background: var(--bg-2); color: var(--fg-0); display: flex; min-height: 100vh;
+  }
+  aside {
+    width: 232px; flex-shrink: 0; background: var(--bg-1); padding: 16px 8px;
+    display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh;
+  }
+  .guild-head { display: flex; align-items: center; gap: 10px; padding: 8px 10px 16px; }
+  .guild-head img { width: 40px; height: 40px; border-radius: 12px; }
+  .guild-head .g-name { font-weight: 700; }
+  .guild-head .g-sub { font-size: 12px; color: var(--fg-2); }
+  aside nav { flex: 1; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+  aside nav a {
+    color: var(--fg-1); text-decoration: none; padding: 8px 10px; border-radius: 6px;
+    font-size: 15px; cursor: pointer;
+  }
+  aside nav a:hover { background: var(--bg-3); color: var(--fg-0); }
+  aside nav a.active { background: var(--bg-3); color: var(--fg-0); }
+  .side-actions { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+  main { flex: 1; padding: 32px 40px 120px; max-width: 980px; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .subtitle { color: var(--fg-2); font-size: 13px; margin-bottom: 28px; }
+  section { margin-bottom: 40px; scroll-margin-top: 24px; }
+  section > h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--fg-1); margin-bottom: 12px; border-bottom: 1px solid var(--bg-3);
+    padding-bottom: 8px;
+  }
+  .card {
+    background: var(--bg-1); border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+  }
+  .card h3 { font-size: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field > label { font-size: 12px; color: var(--fg-1); font-weight: 600; }
+  input[type=text], input[type=number], select, textarea {
+    background: var(--bg-0); color: var(--fg-0); border: 1px solid transparent;
+    border-radius: 4px; padding: 8px 10px; font-size: 14px; font-family: inherit;
+    min-width: 0;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  input[type=color] {
+    width: 42px; height: 36px; border: none; background: var(--bg-0);
+    border-radius: 4px; padding: 3px; cursor: pointer;
+  }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 4px;
+    padding: 8px 14px; font-size: 14px; cursor: pointer; font-family: inherit;
+  }
+  button:hover { background: var(--accent-hover); }
+  button.ghost { background: transparent; color: var(--fg-1); border: 1px solid var(--bg-3); }
+  button.ghost:hover { color: var(--fg-0); background: var(--bg-3); }
+  button.danger { background: transparent; color: var(--red); border: 1px solid transparent; padding: 6px 8px; }
+  button.danger:hover { background: rgba(242,63,67,.12); }
+  button.small { padding: 5px 10px; font-size: 13px; }
+  .emoji-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: var(--bg-0); border: 1px solid var(--bg-3); color: var(--fg-0);
+    min-width: 44px; height: 38px; padding: 0 8px; border-radius: 4px; font-size: 20px;
+  }
+  .emoji-btn:hover { border-color: var(--accent); background: var(--bg-0); }
+  .emoji-btn img { width: 24px; height: 24px; }
+  .emoji-btn .raw { font-size: 12px; color: var(--fg-2); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip {
+    background: var(--bg-3); border-radius: 12px; padding: 3px 6px 3px 10px; font-size: 13px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .chip button { background: none; color: var(--fg-2); padding: 0 4px; font-size: 14px; }
+  .chip button:hover { color: var(--red); background: none; }
+  .chips input { width: 90px; padding: 4px 8px; font-size: 13px; }
+  .preview {
+    background: var(--bg-2); border-left: 4px solid var(--bg-3); border-radius: 4px;
+    padding: 12px 14px; font-size: 15px; line-height: 1.45; word-break: break-all;
+  }
+  img.em { width: 22px; height: 22px; vertical-align: -5px; }
+  .em-txt { font-size: 20px; }
+  .board-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 900px) {
+    .board-grid { grid-template-columns: 1fr; }
+    aside { display: none; }
+    main { padding: 20px 16px 120px; }
+  }
+  .unit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .unit-row .place { width: 52px; color: var(--fg-2); font-size: 13px; text-align: right; }
+  .savebar {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px;
+    background: var(--bg-0); border-radius: var(--radius); padding: 10px 12px 10px 18px;
+    display: none; align-items: center; gap: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    z-index: 50; width: min(640px, calc(100vw - 32px));
+  }
+  .savebar.show { display: flex; }
+  .savebar .msg { flex: 1; font-size: 14px; color: var(--fg-1); }
+  .savebar .save { background: var(--green); }
+  .savebar .save:hover { background: #1e9150; }
+  /* emoji picker modal */
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none;
+    align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal-mask.show { display: flex; }
+  .picker {
+    background: var(--bg-1); border-radius: var(--radius); width: min(520px, 92vw);
+    max-height: 80vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .picker .tabs { display: flex; border-bottom: 1px solid var(--bg-3); }
+  .picker .tabs button {
+    flex: 1; background: none; color: var(--fg-1); border-radius: 0; padding: 12px;
+  }
+  .picker .tabs button.active { color: var(--fg-0); box-shadow: inset 0 -2px 0 var(--accent); }
+  .picker .p-body { padding: 14px; overflow-y: auto; }
+  .picker .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 4px; }
+  .picker .grid button {
+    background: none; border-radius: 6px; height: 48px; font-size: 26px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .picker .grid button:hover { background: var(--bg-3); }
+  .picker .grid img { width: 32px; height: 32px; }
+  .picker .search { width: 100%; margin-bottom: 10px; }
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-0); color: var(--fg-0); padding: 10px 20px; border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 200; display: none; font-size: 14px;
+  }
+  .toast.show { display: block; }
+  .toast.err { color: var(--red); }
+  .toast.ok { color: var(--green); }
+  .hint { font-size: 12px; color: var(--fg-2); }
+  .member-tag { display: inline-flex; align-items: center; gap: 6px; }
+  .member-tag img { width: 22px; height: 22px; border-radius: 50%; }
+  .loading { padding: 80px; text-align: center; color: var(--fg-2); width: 100%; }
+</style>
+</head>
+<body>
+<aside id="sidebar">
+  <div class="guild-head" id="guildHead"></div>
+  <nav id="nav"></nav>
+  <div class="side-actions">
+    <button class="ghost" id="reloadBtn">重新加载</button>
+  </div>
+</aside>
+<main id="main"><div class="loading">加载中…</div></main>
+
+<div class="savebar" id="savebar">
+  <span class="msg">当前有未保存的修改</span>
+  <button class="ghost" id="discardBtn">还原</button>
+  <button class="save" id="saveBtn">保存到集群</button>
+</div>
+
+<div class="modal-mask" id="pickerMask">
+  <div class="picker">
+    <div class="tabs">
+      <button data-tab="guild" class="active">服务器表情</button>
+      <button data-tab="unicode">常用 Emoji</button>
+      <button data-tab="manual">手动输入</button>
+    </div>
+    <div class="p-body" id="pickerBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $ = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => [...el.querySelectorAll(sel)];
+
+let config = null;       // editable copy
+let savedJson = "";      // last saved snapshot for dirty check
+let guild = null;        // /api/guild data
+
+/* ---------- api ---------- */
+function token() { return localStorage.getItem("cortana_token") || ""; }
+async function api(path, opts={}) {
+  opts.headers = Object.assign({}, opts.headers, token() ? {"Authorization": "Bearer " + token()} : {});
+  const r = await fetch(path, opts);
+  if (r.status === 401) {
+    const t = prompt("请输入访问令牌 (CORTANA_WEB_TOKEN):");
+    if (t) { localStorage.setItem("cortana_token", t); return api(path, opts); }
+    throw new Error("未授权");
+  }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+/* ---------- emoji rendering ---------- */
+const SHORTCODES = {
+  heart:"❤️", heartbeat:"💓", sparkling_heart:"💖", two_hearts:"💕", heartpulse:"💗",
+  yellow_heart:"💛", green_heart:"💚", blue_heart:"💙", purple_heart:"💜",
+  star:"⭐", star2:"🌟", sparkles:"✨", fire:"🔥", crystal_ball:"🔮",
+  moneybag:"💰", dollar:"💵", coin:"🪙", gem:"💎", trophy:"🏆", medal:"🏅", crown:"👑",
+  gift:"🎁", tada:"🎉", confetti_ball:"🎊", balloon:"🎈", partying_face:"🥳",
+  bubble_tea:"🧋", coffee:"☕", tea:"🍵", cake:"🍰", cookie:"🍪", candy:"🍬",
+  lollipop:"🍭", doughnut:"🍩", ice_cream:"🍨", ramen:"🍜", rice:"🍚", sushi:"🍣",
+  bento:"🍱", pizza:"🍕", hamburger:"🍔", fries:"🍟", apple:"🍎", strawberry:"🍓",
+  peach:"🍑", watermelon:"🍉", grapes:"🍇", cherries:"🍒", beer:"🍺", sake:"🍶",
+  dog:"🐶", cat:"🐱", rabbit:"🐰", bear:"🐻", panda_face:"🐼", fox_face:"🦊",
+  penguin:"🐧", chick:"🐤", parrot:"🦜", unicorn:"🦄", dragon:"🐉", whale:"🐳",
+  sun_with_face:"🌞", full_moon_with_face:"🌝", rainbow:"🌈", cloud:"☁️",
+  zap:"⚡", snowflake:"❄️", cherry_blossom:"🌸", rose:"🌹", sunflower:"🌻",
+  four_leaf_clover:"🍀", maple_leaf:"🍁", dizzy:"💫", boom:"💥", bulb:"💡",
+  "100":"💯", ok_hand:"👌", thumbsup:"👍", clap:"👏", pray:"🙏", muscle:"💪",
+  wave:"👋", point_up:"☝️", v:"✌️", eyes:"👀", smile:"😄", laughing:"😆",
+  joy:"😂", rofl:"🤣", blush:"😊", heart_eyes:"😍", smirk:"😏", thinking:"🤔",
+  sob:"😭", angry:"😠", ghost:"👻", alien:"👽", robot:"🤖", cat2:"🐈",
+  game_die:"🎲", dart:"🎯", video_game:"🎮", jigsaw:"🧩", art:"🎨",
+  musical_note:"🎵", notes:"🎶", microphone:"🎤", headphones:"🎧",
+  rocket:"🚀", airplane:"✈️", umbrella:"☂️", hourglass:"⌛", alarm_clock:"⏰",
+  bell:"🔔", key:"🔑", lock:"🔒", envelope:"✉️", memo:"📝", books:"📚",
+  pill:"💊", syringe:"💉", warning:"⚠️", white_check_mark:"✅", x:"❌",
+  question:"❓", exclamation:"❗", heavy_plus_sign:"➕", infinity:"♾️",
+};
+const CUSTOM_RE = /<(a?):(\w+):(\d+)>/;
+
+// value -> HTML for preview
+function emojiHtml(value) {
+  if (!value) return '<span class="hint">未设置</span>';
+  const m = String(value).match(CUSTOM_RE);
+  if (m) {
+    const ext = m[1] === "a" ? "gif" : "png";
+    return `<img class="em" src="https://cdn.discordapp.com/emojis/${m[3]}.${ext}" title="${esc(m[2])}">`;
+  }
+  const sc = String(value).match(/^:([\w+-]+):$/);
+  if (sc) {
+    const uni = SHORTCODES[sc[1]];
+    return uni ? `<span class="em-txt" title="${esc(value)}">${uni}</span>`
+               : `<span class="hint">${esc(value)}</span>`;
+  }
+  return `<span class="em-txt">${esc(String(value))}</span>`;
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ---------- emoji picker ---------- */
+let pickerCallback = null, pickerTab = "guild";
+function openPicker(cb) {
+  pickerCallback = cb; pickerTab = "guild";
+  renderPicker();
+  $("#pickerMask").classList.add("show");
+}
+function closePicker() { $("#pickerMask").classList.remove("show"); pickerCallback = null; }
+$("#pickerMask").addEventListener("click", e => { if (e.target === $("#pickerMask")) closePicker(); });
+$$(".picker .tabs button").forEach(b => b.addEventListener("click", () => {
+  pickerTab = b.dataset.tab;
+  $$(".picker .tabs button").forEach(x => x.classList.toggle("active", x === b));
+  renderPicker();
+}));
+function pick(value) { const cb = pickerCallback; closePicker(); if (cb) cb(value); }
+function renderPicker() {
+  const body = $("#pickerBody");
+  body.innerHTML = "";
+  if (pickerTab === "guild") {
+    const search = document.createElement("input");
+    search.type = "text"; search.className = "search"; search.placeholder = "搜索服务器表情…";
+    const grid = document.createElement("div"); grid.className = "grid";
+    const draw = q => {
+      grid.innerHTML = "";
+      (guild ? guild.emojis : [])
+        .filter(e => !q || e.name.toLowerCase().includes(q.toLowerCase()))
+        .forEach(e => {
+          const b = document.createElement("button");
+          b.title = e.name;
+          b.innerHTML = `<img src="${e.url}" alt="${esc(e.name)}">`;
+          b.onclick = () => pick(e.code);
+          grid.appendChild(b);
+        });
+      if (!grid.children.length) grid.innerHTML = '<div class="hint">没有匹配的表情</div>';
+    };
+    search.oninput = () => draw(search.value);
+    body.append(search, grid); draw("");
+  } else if (pickerTab === "unicode") {
+    const search = document.createElement("input");
+    search.type = "text"; search.className = "search"; search.placeholder = "搜索 (按名称, 如 heart)…";
+    const grid = document.createElement("div"); grid.className = "grid";
+    const draw = q => {
+      grid.innerHTML = "";
+      Object.entries(SHORTCODES)
+        .filter(([n]) => !q || n.includes(q.toLowerCase()))
+        .forEach(([n, ch]) => {
+          const b = document.createElement("button");
+          b.title = ":" + n + ":"; b.textContent = ch;
+          b.onclick = () => pick(":" + n + ":");
+          grid.appendChild(b);
+        });
+    };
+    search.oninput = () => draw(search.value);
+    body.append(search, grid); draw("");
+  } else {
+    body.innerHTML = `
+      <div class="field" style="gap:8px">
+        <label>直接输入 emoji 字符、:shortcode: 或 &lt;:name:id&gt;</label>
+        <input type="text" id="manualEmoji" placeholder="例如 🎲 或 :fire: 或 <:fate:9765…>">
+        <button id="manualOk" style="align-self:flex-start">确定</button>
+      </div>`;
+    $("#manualOk", body).onclick = () => { const v = $("#manualEmoji", body).value.trim(); if (v) pick(v); };
+  }
+}
+
+// creates an emoji-select button bound to get/set
+function emojiButton(get, set, showRaw=false) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "emoji-btn";
+  const draw = () => {
+    b.innerHTML = emojiHtml(get()) + (showRaw ? `<span class="raw">${esc(get()||"")}</span>` : "");
+  };
+  b.onclick = () => openPicker(v => { set(v); draw(); markDirty(); refreshPreviews(); });
+  draw();
+  return b;
+}
+
+/* ---------- dirty / save ---------- */
+function markDirty() {
+  $("#savebar").classList.toggle("show", JSON.stringify(config) !== savedJson);
+}
+function toast(msg, cls="ok") {
+  const t = $("#toast");
+  t.textContent = msg; t.className = "toast show " + cls;
+  setTimeout(() => t.classList.remove("show"), 2600);
+}
+$("#saveBtn").onclick = async () => {
+  try {
+    await api("/api/config", {method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(config)});
+    savedJson = JSON.stringify(config);
+    markDirty();
+    toast("✅ 已保存并热更新");
+  } catch (e) { toast("保存失败: " + e.message, "err"); }
+};
+$("#discardBtn").onclick = () => { config = JSON.parse(savedJson); renderAll(); markDirty(); };
+$("#reloadBtn").onclick = () => init();
+
+/* ---------- generic helpers ---------- */
+function field(labelText, input) {
+  const f = document.createElement("div"); f.className = "field";
+  const l = document.createElement("label"); l.textContent = labelText;
+  f.append(l, input);
+  return f;
+}
+function textInput(get, set, width=200) {
+  const i = document.createElement("input");
+  i.type = "text"; i.value = get() ?? ""; i.style.width = width + "px";
+  i.oninput = () => { set(i.value); markDirty(); refreshPreviews(); };
+  return i;
+}
+function numInput(get, set, width=110) {
+  const i = document.createElement("input");
+  i.type = "number"; i.value = get() ?? 0; i.style.width = width + "px";
+  i.oninput = () => { set(Number(i.value)); markDirty(); };
+  return i;
+}
+function colorInput(get, set) {
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "display:flex;gap:6px;align-items:center";
+  const c = document.createElement("input"); c.type = "color";
+  const t = document.createElement("input"); t.type = "text"; t.style.width = "90px";
+  const toHex = n => "#" + (Number(n) >>> 0).toString(16).padStart(6, "0");
+  c.value = toHex(get()); t.value = toHex(get());
+  c.oninput = () => { t.value = c.value; set(parseInt(c.value.slice(1), 16)); markDirty(); };
+  t.onchange = () => {
+    const v = t.value.trim().replace(/^#/, "");
+    if (/^[0-9a-fA-F]{6}$/.test(v)) { c.value = "#" + v; set(parseInt(v, 16)); markDirty(); }
+  };
+  wrap.append(c, t);
+  return wrap;
+}
+function channelSelect(get, set) {
+  const s = document.createElement("select");
+  const chans = guild ? guild.channels : [];
+  if (!chans.some(c => c.name === get()) && get())
+    s.appendChild(new Option("#" + get() + " (不存在)", get()));
+  chans.forEach(c => s.appendChild(new Option("#" + c.name, c.name)));
+  s.value = get() ?? "";
+  s.onchange = () => { set(s.value); markDirty(); };
+  return s;
+}
+function memberSelect(get, set) {
+  const s = document.createElement("select");
+  const members = (guild ? guild.members : []).filter(m => !m.bot);
+  if (!members.some(m => m.name === get()) && get())
+    s.appendChild(new Option(get() + " (不在服务器)", get()));
+  members.forEach(m => s.appendChild(new Option(`${m.display_name} (${m.name})`, m.name)));
+  s.value = get() ?? "";
+  s.onchange = () => { set(s.value); markDirty(); };
+  return s;
+}
+function chipsEditor(list, placeholder) {
+  const box = document.createElement("div"); box.className = "chips";
+  const draw = () => {
+    box.innerHTML = "";
+    list.forEach((kw, i) => {
+      const c = document.createElement("span"); c.className = "chip";
+      c.textContent = kw;
+      const del = document.createElement("button"); del.textContent = "×";
+      del.onclick = () => { list.splice(i, 1); draw(); markDirty(); };
+      c.appendChild(del);
+      box.appendChild(c);
+    });
+    const inp = document.createElement("input");
+    inp.placeholder = placeholder || "+ 回车添加";
+    inp.onkeydown = e => {
+      if (e.key === "Enter" && inp.value.trim()) { list.push(inp.value.trim()); draw(); markDirty(); inp.focus(); }
+    };
+    box.appendChild(inp);
+    if (box.closest("body")) inp.focus?.blur?.();
+  };
+  draw();
+  return box;
+}
+
+/* ---------- board preview ---------- */
+// mirror of src/core/tools.format_units
+function formatUnits(units, total, rowSize=5) {
+  if (total <= 0) return "";
+  const nums = [];
+  for (let i = units.length - 1; i >= 0; i--) {
+    nums.push([Math.floor(total / 10**i), units[i]]);
+    total %= 10**i;
+  }
+  let result = "";
+  for (const [num, unit] of nums) {
+    for (let r = 0; r < Math.floor(num / rowSize); r++) result += unit.repeat(rowSize) + "\n";
+    if (num % rowSize) result += unit.repeat(num % rowSize) + "\n";
+  }
+  return result;
+}
+function mdToHtml(text) {
+  let html = esc(text);
+  html = html.replace(/&lt;(a?):(\w+):(\d+)&gt;/g, (_, a, n, id) =>
+    `<img class="em" src="https://cdn.discordapp.com/emojis/${id}.${a === "a" ? "gif" : "png"}" title="${n}">`);
+  html = html.replace(/:([\w+-]+):/g, (m0, n) => SHORTCODES[n] ? `<span class="em-txt">${SHORTCODES[n]}</span>` : m0);
+  html = html.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  return html.replace(/\n/g, "<br>");
+}
+const previewFns = [];
+function refreshPreviews() { previewFns.forEach(fn => fn()); }
+
+/* ---------- sections ---------- */
+const SECTIONS = [
+  ["personas", "Bot 形象"],
+  ["emoji", "Emoji 映射"],
+  ["board", "积分板 Board"],
+  ["award", "授勋 Award"],
+  ["notify", "通知 Bark"],
+  ["archive", "自动归档"],
+  ["basic", "基础设置"],
+];
+
+function renderAll() {
+  previewFns.length = 0;
+  const main = $("#main");
+  main.innerHTML = `<h1>Cortana 配置台</h1>
+    <div class="subtitle">修改后点击底部「保存到集群」即时生效 · config.yml 会自动更新</div>`;
+  main.append(
+    sectionPersonas(), sectionEmoji(), sectionBoard(), sectionAward(),
+    sectionNotify(), sectionArchive(), sectionBasic()
+  );
+  const nav = $("#nav");
+  nav.innerHTML = "";
+  SECTIONS.forEach(([id, label]) => {
+    const a = document.createElement("a");
+    a.textContent = label;
+    a.onclick = () => { $("#sec-" + id).scrollIntoView({behavior: "smooth"}); };
+    nav.appendChild(a);
+  });
+  refreshPreviews();
+}
+
+function makeSection(id, title) {
+  const s = document.createElement("section");
+  s.id = "sec-" + id;
+  const h = document.createElement("h2"); h.textContent = title;
+  s.appendChild(h);
+  return s;
+}
+
+/* --- Bot 形象 --- */
+function sectionPersonas() {
+  const s = makeSection("personas", "Bot 形象 · /shift 切换");
+  Object.entries(config.cortana).forEach(([name, p]) => {
+    const card = document.createElement("div"); card.className = "card";
+    const h = document.createElement("h3");
+    const img = document.createElement("img");
+    img.className = "avatar"; img.src = "/avatars/" + name; img.alt = name;
+    img.onerror = () => { img.style.display = "none"; };
+    h.append(img, document.createTextNode(name));
+    const del = document.createElement("button"); del.className = "danger small"; del.textContent = "删除";
+    del.style.marginLeft = "auto";
+    del.onclick = () => {
+      if (!confirm(`删除形象 ${name}?`)) return;
+      delete config.cortana[name];
+      renderAll(); markDirty();
+    };
+    h.appendChild(del);
+    card.appendChild(h);
+    const row = document.createElement("div"); row.className = "row";
+    row.append(
+      field("显示名称", textInput(() => p.display_name, v => p.display_name = v, 160)),
+      field("主题色", colorInput(() => p.color, v => p.color = v)),
+    );
+    const row2 = document.createElement("div"); row2.className = "row";
+    row2.append(
+      field("上线台词", textInput(() => p.online, v => p.online = v, 300)),
+      field("下线台词", textInput(() => p.offline, v => p.offline = v, 300)),
+    );
+    const emojiRow = document.createElement("div"); emojiRow.className = "row";
+    emojiRow.append(field("对应表情 (emoji 映射中同名条目)",
+      emojiButton(() => config.emoji[name], v => { config.emoji[name] = v; }, true)));
+    card.append(row, row2, emojiRow);
+    const hint = document.createElement("div"); hint.className = "hint";
+    hint.textContent = `头像文件: src/assets/avatars/${name}.jpg (更换头像需替换文件并重新部署)`;
+    card.appendChild(hint);
+    s.appendChild(card);
+  });
+  const addBtn = document.createElement("button"); addBtn.className = "ghost"; addBtn.textContent = "+ 新增形象";
+  addBtn.onclick = () => {
+    const name = prompt("形象标识 (小写英文, 同时需要提供 src/assets/avatars/<名字>.jpg):");
+    if (!name || config.cortana[name]) return;
+    config.cortana[name] = {display_name: name, color: 5793266, online: "已上线", offline: "已下线"};
+    renderAll(); markDirty();
+  };
+  s.appendChild(addBtn);
+  return s;
+}
+
+/* --- Emoji 映射 --- */
+function sectionEmoji() {
+  const s = makeSection("emoji", "Emoji 映射 · 供形象/授勋/归档引用");
+  const card = document.createElement("div"); card.className = "card";
+  const draw = () => {
+    card.innerHTML = "";
+    Object.keys(config.emoji).forEach(key => {
+      const row = document.createElement("div"); row.className = "row";
+      row.style.alignItems = "center";
+      const keyInput = document.createElement("input");
+      keyInput.type = "text"; keyInput.value = key; keyInput.style.width = "160px";
+      keyInput.onchange = () => {
+        const nk = keyInput.value.trim();
+        if (!nk || (nk !== key && config.emoji[nk] !== undefined)) { keyInput.value = key; return; }
+        if (nk !== key) {
+          const entries = Object.entries(config.emoji).map(([k, v]) => [k === key ? nk : k, v]);
+          config.emoji = Object.fromEntries(entries);
+          renderAll(); markDirty();
+        }
+      };
+      row.append(keyInput, emojiButton(() => config.emoji[key], v => { config.emoji[key] = v; }, true));
+      const del = document.createElement("button"); del.className = "danger small"; del.textContent = "删除";
+      del.onclick = () => { delete config.emoji[key]; draw(); markDirty(); };
+      row.appendChild(del);
+      card.appendChild(row);
+    });
+    const add = document.createElement("button"); add.className = "ghost small"; add.textContent = "+ 新增条目";
+    add.onclick = () => {
+      let n = "new_emoji", i = 1;
+      while (config.emoji[n] !== undefined) n = "new_emoji_" + i++;
+      config.emoji[n] = "";
+      draw(); markDirty();
+    };
+    card.appendChild(add);
+  };
+  draw();
+  s.appendChild(card);
+  return s;
+}
+
+/* --- 积分板 Board --- */
+function sectionBoard() {
+  const s = makeSection("board", "积分板 Board · /record /bonus /done");
+  const desc = document.createElement("div"); desc.className = "hint"; desc.style.marginBottom = "12px";
+  desc.textContent = "每人一块积分板: bot 在指定频道维护一条消息, 用 emoji 按十进制位显示积分。units 第 1 项代表 ×1, 第 2 项代表 ×10, 以此类推。悬赏奖励使用 ×1 的 emoji。";
+  s.appendChild(desc);
+  const grid = document.createElement("div"); grid.className = "board-grid";
+  Object.entries(config.board).forEach(([user, b]) => {
+    const card = document.createElement("div"); card.className = "card";
+    const h = document.createElement("h3");
+    const m = (guild ? guild.members : []).find(x => x.name === user);
+    if (m) {
+      const img = document.createElement("img"); img.className = "avatar"; img.style.cssText = "width:28px;height:28px";
+      img.src = m.avatar; h.appendChild(img);
+    }
+    h.appendChild(document.createTextNode(user + " 的积分板"));
+    card.appendChild(h);
+    const row1 = document.createElement("div"); row1.className = "row";
+    row1.append(
+      field("频道", channelSelect(() => b.channel, v => b.channel = v)),
+      field("标题", textInput(() => b.title, v => b.title = v, 180)),
+      field("积分名称", textInput(() => b.response, v => b.response = v, 140)),
+    );
+    card.appendChild(row1);
+    const unitsBox = document.createElement("div");
+    const drawUnits = () => {
+      unitsBox.innerHTML = "";
+      b.units.forEach((u, i) => {
+        const r = document.createElement("div"); r.className = "unit-row";
+        const place = document.createElement("span"); place.className = "place";
+        place.textContent = "×" + 10**i;
+        r.append(place, emojiButton(() => b.units[i], v => { b.units[i] = v; }, true));
+        if (b.units.length > 1) {
+          const del = document.createElement("button"); del.className = "danger small"; del.textContent = "移除";
+          del.onclick = () => { b.units.splice(i, 1); drawUnits(); markDirty(); refreshPreviews(); };
+          r.appendChild(del);
+        }
+        unitsBox.appendChild(r);
+      });
+      if (b.units.length < 4) {
+        const add = document.createElement("button"); add.className = "ghost small";
+        add.textContent = "+ 添加 ×" + 10**b.units.length + " 单位";
+        add.onclick = () => { openPicker(v => { b.units.push(v); drawUnits(); markDirty(); refreshPreviews(); }); };
+        unitsBox.appendChild(add);
+      }
+    };
+    drawUnits();
+    card.append(field("积分单位", unitsBox));
+    // live preview
+    const pvWrap = document.createElement("div"); pvWrap.style.marginTop = "12px";
+    const pvLabel = document.createElement("div"); pvLabel.className = "row";
+    const amt = document.createElement("input");
+    amt.type = "number"; amt.value = 66; amt.style.width = "90px";
+    pvLabel.append(field("预览积分值", amt));
+    const pv = document.createElement("div"); pv.className = "preview";
+    const drawPv = () => {
+      const total = Number(amt.value) || 0;
+      pv.innerHTML = mdToHtml(`${b.title}\n${formatUnits(b.units, total)}${total}`);
+      pv.style.borderLeftColor = "var(--accent)";
+    };
+    amt.oninput = drawPv;
+    previewFns.push(drawPv);
+    pvWrap.append(pvLabel, pv);
+    card.appendChild(pvWrap);
+    grid.appendChild(card);
+  });
+  s.appendChild(grid);
+  return s;
+}
+
+/* --- 授勋 Award --- */
+function sectionAward() {
+  const s = makeSection("award", "授勋 Award · !award 称号徽章");
+  const desc = document.createElement("div"); desc.className = "hint"; desc.style.marginBottom = "12px";
+  desc.textContent = "每人配置一组可颁发的称号, 每个称号带表情 (引用 Emoji 映射的条目名) 与徽章颜色。";
+  s.appendChild(desc);
+  Object.entries(config.award).forEach(([user, titles]) => {
+    const card = document.createElement("div"); card.className = "card";
+    const h = document.createElement("h3"); h.textContent = user + " 可颁发的称号";
+    card.appendChild(h);
+    const draw = () => {
+      [...card.querySelectorAll(".row, .ghost")].forEach(e => e.remove());
+      Object.entries(titles).forEach(([title, [emojiKey, color]]) => {
+        const row = document.createElement("div"); row.className = "row";
+        const tInput = document.createElement("input");
+        tInput.type = "text"; tInput.value = title; tInput.style.width = "120px";
+        tInput.onchange = () => {
+          const nt = tInput.value.trim();
+          if (!nt || (nt !== title && titles[nt])) { tInput.value = title; return; }
+          if (nt !== title) {
+            const entries = Object.entries(titles).map(([k, v]) => [k === title ? nt : k, v]);
+            config.award[user] = titles = Object.fromEntries(entries);
+            draw(); markDirty();
+          }
+        };
+        const emojiSel = document.createElement("select");
+        Object.keys(config.emoji).forEach(k => emojiSel.appendChild(new Option(k, k)));
+        emojiSel.value = emojiKey;
+        emojiSel.onchange = () => { titles[title][0] = emojiSel.value; markDirty(); drawIcon(); };
+        const icon = document.createElement("span");
+        const drawIcon = () => { icon.innerHTML = emojiHtml(config.emoji[titles[title][0]]); };
+        drawIcon();
+        row.append(
+          field("称号", tInput),
+          field("表情", emojiSel),
+          field("", icon),
+          field("徽章颜色", colorInput(() => titles[title][1], v => titles[title][1] = v)),
+        );
+        const del = document.createElement("button"); del.className = "danger small"; del.textContent = "删除";
+        del.onclick = () => { delete titles[title]; draw(); markDirty(); };
+        row.appendChild(del);
+        card.appendChild(row);
+      });
+      const add = document.createElement("button"); add.className = "ghost small"; add.textContent = "+ 新增称号";
+      add.onclick = () => {
+        const t = prompt("称号名称:");
+        if (!t || titles[t]) return;
+        titles[t] = [Object.keys(config.emoji)[0] || "", 5793266];
+        draw(); markDirty();
+      };
+      card.appendChild(add);
+    };
+    draw();
+    s.appendChild(card);
+  });
+  return s;
+}
+
+/* --- 通知 --- */
+function sectionNotify() {
+  const s = makeSection("notify", "通知 · Bark 推送 与 /awake");
+  const card = document.createElement("div"); card.className = "card";
+  const h = document.createElement("h3"); h.textContent = "Bark 推送地址";
+  card.appendChild(h);
+  Object.keys(config.bark).filter(k => k !== "post").forEach(user => {
+    const row = document.createElement("div"); row.className = "row";
+    row.append(field(user + " 的 Bark URL", textInput(() => config.bark[user], v => config.bark[user] = v, 340)));
+    card.appendChild(row);
+  });
+  const postRow = document.createElement("div"); postRow.className = "row";
+  postRow.append(
+    field("推送标题", textInput(() => config.bark.post.title, v => config.bark.post.title = v, 140)),
+    field("推送分组", textInput(() => config.bark.post.group, v => config.bark.post.group = v, 140)),
+    field("推送图标 URL", textInput(() => config.bark.post.icon, v => config.bark.post.icon = v, 320)),
+  );
+  card.appendChild(postRow);
+  s.appendChild(card);
+  const card2 = document.createElement("div"); card2.className = "card";
+  const h2 = document.createElement("h3"); h2.textContent = "/awake 醒来提醒文案";
+  card2.appendChild(h2);
+  Object.keys(config.awake_notify).forEach(user => {
+    const row = document.createElement("div"); row.className = "row";
+    row.append(field("通知 " + user + " 时的内容", textInput(() => config.awake_notify[user], v => config.awake_notify[user] = v, 340)));
+    card2.appendChild(row);
+  });
+  s.appendChild(card2);
+  return s;
+}
+
+/* --- 自动归档 --- */
+function sectionArchive() {
+  const s = makeSection("archive", "自动归档 · #chat 关键词/链接分流");
+  const card = document.createElement("div"); card.className = "card";
+  const h = document.createElement("h3"); h.textContent = "关键词归档 (带附件的消息命中关键词后转发到对应频道)";
+  card.appendChild(h);
+  const drawKw = () => {
+    [...card.querySelectorAll(".row, .ghost")].forEach(e => e.remove());
+    Object.entries(config.archive_keyword).forEach(([ch, kws]) => {
+      const row = document.createElement("div"); row.className = "row";
+      row.style.alignItems = "center";
+      row.append(
+        field("目标频道", channelSelect(() => ch, v => {
+          if (v === ch || config.archive_keyword[v]) return;
+          const entries = Object.entries(config.archive_keyword).map(([k, val]) => [k === ch ? v : k, val]);
+          config.archive_keyword = Object.fromEntries(entries);
+          drawKw(); markDirty();
+        })),
+        field("关键词", chipsEditor(kws)),
+      );
+      const del = document.createElement("button"); del.className = "danger small"; del.textContent = "删除";
+      del.onclick = () => { delete config.archive_keyword[ch]; drawKw(); markDirty(); };
+      row.appendChild(del);
+      card.appendChild(row);
+    });
+    const add = document.createElement("button"); add.className = "ghost small"; add.textContent = "+ 新增归档规则";
+    add.onclick = () => {
+      const free = (guild ? guild.channels : []).find(c => !config.archive_keyword[c.name]);
+      config.archive_keyword[free ? free.name : "channel"] = [];
+      drawKw(); markDirty();
+    };
+    card.appendChild(add);
+  };
+  drawKw();
+  s.appendChild(card);
+
+  const card2 = document.createElement("div"); card2.className = "card";
+  const h2 = document.createElement("h3"); h2.textContent = "链接归档 (消息含指定前缀的链接时转发 embed)";
+  card2.appendChild(h2);
+  const drawEm = () => {
+    [...card2.querySelectorAll(".row, .ghost")].forEach(e => e.remove());
+    Object.entries(config.archive_embed).forEach(([ch, urls]) => {
+      const row = document.createElement("div"); row.className = "row";
+      row.style.alignItems = "center";
+      row.append(
+        field("目标频道", channelSelect(() => ch, v => {
+          if (v === ch || config.archive_embed[v]) return;
+          const entries = Object.entries(config.archive_embed).map(([k, val]) => [k === ch ? v : k, val]);
+          config.archive_embed = Object.fromEntries(entries);
+          drawEm(); markDirty();
+        })),
+        field("URL 前缀", chipsEditor(urls, "+ https://…")),
+      );
+      const del = document.createElement("button"); del.className = "danger small"; del.textContent = "删除";
+      del.onclick = () => { delete config.archive_embed[ch]; drawEm(); markDirty(); };
+      row.appendChild(del);
+      card2.appendChild(row);
+    });
+    const add = document.createElement("button"); add.className = "ghost small"; add.textContent = "+ 新增链接规则";
+    add.onclick = () => {
+      const free = (guild ? guild.channels : []).find(c => !config.archive_embed[c.name]);
+      config.archive_embed[free ? free.name : "channel"] = [];
+      drawEm(); markDirty();
+    };
+    card2.appendChild(add);
+  };
+  drawEm();
+  s.appendChild(card2);
+  return s;
+}
+
+/* --- 基础设置 --- */
+function sectionBasic() {
+  const s = makeSection("basic", "基础设置");
+  const card = document.createElement("div"); card.className = "card";
+  const row1 = document.createElement("div"); row1.className = "row";
+  row1.append(
+    field("服务器名称", textInput(() => config.guild, v => config.guild = v, 160)),
+    field("服务器 ID", textInput(() => config.guild_id, v => config.guild_id = v, 200)),
+    field("时区 (UTC 偏移, 重启生效)", numInput(() => config.timezone, v => config.timezone = v)),
+  );
+  card.appendChild(row1);
+  const row2 = document.createElement("div"); row2.className = "row";
+  if (!config.pair) config.pair = [];
+  row2.append(
+    field("用户 A", memberSelect(() => config.pair[0], v => config.pair[0] = v)),
+    field("用户 B", memberSelect(() => config.pair[1], v => config.pair[1] = v)),
+  );
+  const pairHint = document.createElement("div"); pairHint.className = "hint";
+  pairHint.textContent = "pair: 参与积分/悬赏/通知的两位成员, 互为对方的接收者";
+  card.append(row2, pairHint);
+  s.appendChild(card);
+
+  const card2 = document.createElement("div"); card2.className = "card";
+  const h2 = document.createElement("h3"); h2.textContent = "每日任务与备份";
+  card2.appendChild(h2);
+  const row3 = document.createElement("div"); row3.className = "row";
+  row3.append(
+    field("每日播报频道", channelSelect(() => config.daily.channel, v => config.daily.channel = v)),
+    field("备份目录", textInput(() => config.backup.local_folder, v => config.backup.local_folder = v, 180)),
+    field("下载分块大小 (bytes)", numInput(() => config.backup.chunk_size, v => config.backup.chunk_size = v, 140)),
+  );
+  card2.appendChild(row3);
+  s.appendChild(card2);
+  return s;
+}
+
+/* ---------- init ---------- */
+async function init() {
+  $("#main").innerHTML = '<div class="loading">加载中…</div>';
+  try {
+    const [c, g] = await Promise.all([api("/api/config"), api("/api/guild").catch(() => null)]);
+    config = c.config;
+    savedJson = JSON.stringify(config);
+    guild = g;
+    if (guild) {
+      $("#guildHead").innerHTML = `
+        ${guild.guild.icon ? `<img src="${guild.guild.icon}">` : ""}
+        <div><div class="g-name">${esc(guild.guild.name)}</div>
+        <div class="g-sub">${guild.emojis.length} 个表情 · ${guild.channels.length} 个频道</div></div>`;
+    } else {
+      $("#guildHead").innerHTML = `<div class="g-sub">⚠️ bot 未连接, 服务器数据不可用</div>`;
+    }
+    renderAll();
+    markDirty();
+  } catch (e) {
+    $("#main").innerHTML = `<div class="loading">加载失败: ${esc(e.message)}<br><br><button onclick="init()">重试</button></div>`;
+  }
+}
+window.addEventListener("beforeunload", e => {
+  if (JSON.stringify(config) !== savedJson) e.preventDefault();
+});
+init();
+</script>
+</body>
+</html>

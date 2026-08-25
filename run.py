@@ -1,11 +1,14 @@
 import os
 from datetime import time as datetime_time
+
 from discord.ext import tasks
-from src.core.init import bot, cfg, update_cfg, Log, tz
+
 from src.core.cortana import cortana
+from src.core.init import Log, bot, cfg, tz, update_cfg
 from src.core.tools import warning
 from src.func.commands import Cmd
 from src.func.functions import Func
+from src.web.server import start_web
 
 log = Log.get("main")
 
@@ -15,6 +18,7 @@ async def on_ready():
     log.info(f"We have logged in as {bot.user}")
     update_cfg()
     cortana.init()
+    await start_web()
 
 
 @bot.event
@@ -79,7 +83,9 @@ async def backup_daily(ctx):
 
 
 @bot.command(description="手动全部Dropbox备份", guild_ids=[cfg["guild_id"]])
-async def backup_all(ctx, start_date_str: str = None, end_date_str: str = None):
+async def backup_all(
+    ctx, start_date_str: str | None = None, end_date_str: str | None = None
+):
     await Cmd.backup_all(ctx, start_date_str, end_date_str)
 
 
