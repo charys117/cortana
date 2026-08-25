@@ -191,13 +191,32 @@ async function api(path, opts={}) {
   opts.headers = Object.assign({}, opts.headers, token() ? {"Authorization": "Bearer " + token()} : {});
   const r = await fetch(path, opts);
   if (r.status === 401) {
-    const t = prompt("请输入访问令牌 (CORTANA_WEB_TOKEN):");
-    if (t) { localStorage.setItem("cortana_token", t); return api(path, opts); }
-    throw new Error("未授权");
+    const err = new Error("未授权");
+    err.auth = true;
+    throw err;
   }
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || r.statusText);
   return data;
+}
+function renderTokenGate(message) {
+  $("#main").innerHTML = `
+    <div class="loading">
+      <h1 style="font-size:18px;margin-bottom:16px">🔐 需要访问令牌</h1>
+      <div class="field" style="max-width:340px;margin:0 auto;text-align:left">
+        <label>CORTANA_WEB_TOKEN</label>
+        <input type="password" id="tokenInput" placeholder="粘贴访问令牌" autocomplete="off">
+        <button id="tokenOk" style="margin-top:10px">进入配置台</button>
+        <div class="hint" style="margin-top:10px">${esc(message || "令牌保存在本浏览器 localStorage 中")}</div>
+      </div>
+    </div>`;
+  const go = () => {
+    const v = $("#tokenInput").value.trim();
+    if (v) { localStorage.setItem("cortana_token", v); init(); }
+  };
+  $("#tokenOk").onclick = go;
+  $("#tokenInput").onkeydown = e => { if (e.key === "Enter") go(); };
+  $("#tokenInput").focus();
 }
 
 /* ---------- emoji rendering ---------- */
@@ -339,7 +358,14 @@ $("#saveBtn").onclick = async () => {
     savedJson = JSON.stringify(config);
     markDirty();
     toast("✅ 已保存并热更新");
-  } catch (e) { toast("保存失败: " + e.message, "err"); }
+  } catch (e) {
+    if (e.auth) {
+      localStorage.removeItem("cortana_token");
+      toast("令牌无效或已过期, 刷新页面后重新输入", "err");
+    } else {
+      toast("保存失败: " + e.message, "err");
+    }
+  }
 };
 $("#discardBtn").onclick = () => { config = JSON.parse(savedJson); renderAll(); markDirty(); };
 $("#reloadBtn").onclick = () => init();
@@ -862,6 +888,10 @@ async function init() {
     renderAll();
     markDirty();
   } catch (e) {
+    if (e.auth) {
+      renderTokenGate(token() ? "令牌无效或已过期, 请重新输入" : "");
+      return;
+    }
     $("#main").innerHTML = `<div class="loading">加载失败: ${esc(e.message)}<br><br><button onclick="init()">重试</button></div>`;
   }
 }
