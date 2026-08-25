@@ -19,6 +19,17 @@ The bot serves a config editor (default `http://<host>:8080`) once it is ready:
 - saving writes `config.yml` atomically and hot-applies it — no restart needed
   (only `timezone` requires a restart)
 
+The frontend is a Vue 3 + Element Plus app in `web/`, served as static files
+by the bot's aiohttp server. The Docker build compiles it automatically; for a
+local (non-Docker) run, build it once first:
+
+```
+cd web && npm install && npm run build   # outputs to src/web/static/
+```
+
+For frontend development, `cd web && npm run dev` starts Vite on port 5173
+with `/api` proxied to a locally running bot on port 8080.
+
 # Environment Variables
 
 - `CORTANA_TOKEN` — Discord bot token (required)

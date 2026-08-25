@@ -1,0 +1,63 @@
+/* Discord-flavored palette on top of Element Plus dark theme */
+html.dark {
+  --el-color-primary: #5865f2;
+  --el-color-primary-light-3: #7983f5;
+  --el-color-primary-light-5: #99a3f8;
+  --el-color-primary-light-7: #bac3fa;
+  --el-color-primary-light-8: #2b2f52;
+  --el-color-primary-light-9: #23264a;
+  --el-color-primary-dark-2: #4752c4;
+  --el-color-success: #23a55a;
+  --el-color-danger: #f23f43;
+  --el-color-warning: #f0b232;
+
+  --el-bg-color-page: #1e1f22;
+  --el-bg-color: #313338;
+  --el-bg-color-overlay: #2b2d31;
+  --el-fill-color-blank: #383a40;
+  --el-border-color: #3f4147;
+  --el-border-color-light: #3f4147;
+  --el-border-color-lighter: #383a40;
+  --el-text-color-primary: #f2f3f5;
+  --el-text-color-regular: #dbdee1;
+  --el-text-color-secondary: #b5bac1;
+  --el-text-color-placeholder: #80848e;
+
+  --ctn-sidebar: #2b2d31;
+  --ctn-card: #2b2d31;
+  --ctn-input: #1e1f22;
+  --ctn-hover: #383a40;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #app { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: "gg sans", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  background: var(--el-bg-color);
+  color: var(--el-text-color-primary);
+}
+
+/* inputs on darker wells, like Discord */
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner,
+.el-input-number .el-input__wrapper {
+  background-color: var(--ctn-input);
+}
+
+.el-card {
+  --el-card-bg-color: var(--ctn-card);
+  border: none;
+  border-radius: 8px;
+}
+
+.el-dialog { border-radius: 8px; }
+
+/* emoji shown inside text previews */
+img.em { width: 22px; height: 22px; vertical-align: -5px; }
+.em-txt { font-size: 20px; line-height: 1; }
+
+.hint { font-size: 12px; color: var(--el-text-color-placeholder); }

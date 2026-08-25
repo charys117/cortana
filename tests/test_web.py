@@ -149,9 +149,24 @@ class TestAuth:
         )
         assert resp.status == 200
 
-    async def test_non_api_paths_are_not_gated(self, secured_client):
+    async def test_non_api_paths_are_not_gated(
+        self, secured_client, tmp_path, monkeypatch
+    ):
+        # the built frontend may be absent in CI; serve a stub index.html
+        (tmp_path / "index.html").write_text("<!doctype html>", encoding="utf-8")
+        monkeypatch.setattr(server, "STATIC_DIR", str(tmp_path))
         resp = await secured_client.get("/")
         assert resp.status == 200
+
+
+class TestIndex:
+    async def test_503_with_hint_when_frontend_not_built(
+        self, client, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(server, "STATIC_DIR", str(tmp_path / "empty"))
+        resp = await client.get("/")
+        assert resp.status == 503
+        assert "npm" in await resp.text()
 
 
 class TestGuildApi:
