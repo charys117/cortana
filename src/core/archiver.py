@@ -271,6 +271,10 @@ class Archiver:
                 processed += 1
                 if processed % 500 == 0:
                     await session.commit()
+                    self.log.info(
+                        f"syncing #{channel.name}: {processed} processed "
+                        f"({stats['new']} new)"
+                    )
             await _upsert(
                 session,
                 SyncStatus,
