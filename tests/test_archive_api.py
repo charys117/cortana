@@ -95,7 +95,17 @@ class TestParamValidation:
         resp = await db_client.get("/api/archive/messages/abc/versions")
         assert resp.status == 400
 
-    @pytest.mark.parametrize("query", ["", "q=x", "q=%20%20", "q=ok&channel_id=abc"])
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "",
+            "q=x",
+            "q=%20%20",
+            "q=ok&channel_id=abc",
+            "q=ok&since=abc",
+            "q=ok&until=2026-13-01",
+        ],
+    )
     async def test_search_rejects_bad_params(self, db_client, query):
         resp = await db_client.get(f"/api/archive/search?{query}")
         assert resp.status == 400

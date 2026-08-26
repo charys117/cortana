@@ -25,6 +25,7 @@ export const arc = reactive({
     q: "",
     channelId: "",
     authorId: "",
+    dateRange: null, // [Date, Date] at local midnight, or null
     results: [],
     hasMore: false,
     searched: false,
@@ -144,6 +145,13 @@ export async function runSearch(more = false) {
     let url = `/api/archive/search?q=${encodeURIComponent(q)}&limit=25`;
     if (s.channelId) url += `&channel_id=${s.channelId}`;
     if (s.authorId) url += `&author_id=${s.authorId}`;
+    if (s.dateRange?.length === 2) {
+      const [from, to] = s.dateRange;
+      // end date is inclusive: until = the following local midnight
+      const until = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
+      url += `&since=${encodeURIComponent(from.toISOString())}`;
+      url += `&until=${encodeURIComponent(until.toISOString())}`;
+    }
     if (more && s.results.length) url += `&before=${s.results[s.results.length - 1].id}`;
     const data = await api(url);
     s.results = more ? [...s.results, ...data.results] : data.results;

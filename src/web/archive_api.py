@@ -9,9 +9,11 @@ search relies on the pg_trgm GIN index on messages.content.
 
 import asyncio
 import os
+from datetime import UTC, datetime
 
 from aiohttp import web
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from discord.utils import time_snowflake
 from sqlalchemy import select
 
 from src.core.db import get_session
@@ -53,6 +55,20 @@ def _snowflake_param(request, name):
     if not raw.isdigit():
         return None, web.json_response({"error": f"无效的参数: {name}"}, status=400)
     return int(raw), None
+
+
+def _datetime_param(request, name):
+    """Parse an optional ISO 8601 query param; returns (aware value, error)."""
+    raw = request.query.get(name)
+    if raw is None:
+        return None, None
+    try:
+        dt = datetime.fromisoformat(raw)
+    except ValueError:
+        return None, web.json_response({"error": f"无效的参数: {name}"}, status=400)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt, None
 
 
 def _limit_param(request, default, maximum):
@@ -383,6 +399,12 @@ async def search_messages(request):
     before, err = _snowflake_param(request, "before")
     if err:
         return err
+    since, err = _datetime_param(request, "since")
+    if err:
+        return err
+    until, err = _datetime_param(request, "until")
+    if err:
+        return err
 
     # ILIKE '%…%' is served by the GIN gin_trgm_ops index on content
     stmt = (
@@ -396,6 +418,12 @@ async def search_messages(request):
         stmt = stmt.where(Message.author_id == author_id)
     if before is not None:
         stmt = stmt.where(Message.id < before)
+    # date bounds become snowflake bounds so they share the id column with
+    # ordering and the keyset cursor: since inclusive, until exclusive
+    if since is not None:
+        stmt = stmt.where(Message.id >= time_snowflake(since))
+    if until is not None:
+        stmt = stmt.where(Message.id < time_snowflake(until))
     stmt = stmt.order_by(Message.id.desc()).limit(limit + 1)
 
     async with get_session() as session:
