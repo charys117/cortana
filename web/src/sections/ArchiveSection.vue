@@ -48,16 +48,24 @@ function addRule(cfgKey) {
               @update:model-value="setChannel(g.key, ch, $event)"
             />
           </Field>
-          <Field :label="g.label">
+          <Field :label="g.label" class="patterns">
             <TagsEditor
               :model-value="patterns"
               :placeholder="g.placeholder"
               @update:model-value="store.config[g.key][ch] = $event"
             />
           </Field>
-          <el-button type="danger" text size="small" @click="delete store.config[g.key][ch]">
-            删除
-          </el-button>
+          <el-popconfirm
+            :title="`删除 #${ch} 的规则?`"
+            confirm-button-text="删除"
+            cancel-button-text="取消"
+            confirm-button-type="danger"
+            @confirm="delete store.config[g.key][ch]"
+          >
+            <template #reference>
+              <el-button type="danger" text size="small" class="del">删除</el-button>
+            </template>
+          </el-popconfirm>
         </div>
       </template>
       <el-button size="small" @click="addRule(g.key)">{{ g.addText }}</el-button>
@@ -68,5 +76,9 @@ function addRule(cfgKey) {
 <style scoped>
 .card { margin-bottom: 12px; }
 .head { font-weight: 600; margin-bottom: 12px; }
-.row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; align-items: flex-end; }
+/* tags wrap inside their own field, so the row itself never wraps and the
+   delete button stays pinned to the right of the rule it belongs to */
+.row { display: flex; gap: 14px; margin-bottom: 12px; align-items: flex-end; }
+.row .patterns { flex: 1; min-width: 0; }
+.row .del { margin-bottom: 4px; }
 </style>

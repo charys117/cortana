@@ -57,6 +57,11 @@ function embedColor(embed) {
   return embed.color != null ? toHex(embed.color) : "var(--el-border-color)";
 }
 
+// embed URLs are message-author-controlled; only let http(s) through as links
+function safeUrl(u) {
+  return u && /^https?:\/\//i.test(u) ? u : null;
+}
+
 function jumpToReply() {
   const ref_ = props.msg.reply_to;
   if (ref_ && !ref_.missing) jumpTo(props.msg.channel_id, ref_.id);
@@ -175,7 +180,7 @@ function jumpToReply() {
         >
           <div v-if="embed.author?.name" class="embed-author">{{ embed.author.name }}</div>
           <div v-if="embed.title" class="embed-title">
-            <a v-if="embed.url" :href="embed.url" target="_blank" rel="noopener">
+            <a v-if="safeUrl(embed.url)" :href="safeUrl(embed.url)" target="_blank" rel="noopener">
               {{ embed.title }}
             </a>
             <template v-else>{{ embed.title }}</template>

@@ -1,9 +1,12 @@
 import { createApp } from "vue";
-import ElementPlus from "element-plus";
-import zhCn from "element-plus/es/locale/lang/zh-cn";
-import "element-plus/dist/index.css";
+// components and ElMessage/ElMessageBox are auto-imported on demand (see
+// vite.config.js); only the v-loading directive and global css come in here
+import { ElLoading } from "element-plus";
+import "element-plus/theme-chalk/el-loading.css";
 import "element-plus/theme-chalk/dark/css-vars.css";
 import "./style.css";
 import App from "./App.vue";
 
-createApp(App).use(ElementPlus, { locale: zhCn }).mount("#app");
+const app = createApp(App);
+app.directive("loading", ElLoading.directive);
+app.mount("#app");
