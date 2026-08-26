@@ -33,6 +33,7 @@ function fmtCount(n) {
       <a
         class="chan"
         :class="{ active: c.id === arc.currentChannelId, empty: !c.message_count }"
+        :href="'#archive/' + c.id"
         @click="openChannel(c.id)"
       >
         <span class="glyph">#</span>
@@ -44,6 +45,7 @@ function fmtCount(n) {
         :key="t.id"
         class="chan thread"
         :class="{ active: t.id === arc.currentChannelId, empty: !t.message_count }"
+        :href="'#archive/' + t.id"
         @click="openChannel(t.id)"
       >
         <span class="glyph">└</span>
@@ -59,6 +61,7 @@ function fmtCount(n) {
         :key="t.id"
         class="chan"
         :class="{ active: t.id === arc.currentChannelId, empty: !t.message_count }"
+        :href="'#archive/' + t.id"
         @click="openChannel(t.id)"
       >
         <span class="glyph">🧵</span>
@@ -94,6 +97,7 @@ function fmtCount(n) {
   color: var(--el-text-color-secondary);
   cursor: pointer;
   user-select: none;
+  text-decoration: none;
 }
 .chan:hover { background: var(--ctn-hover); color: var(--el-text-color-primary); }
 .chan.active { background: var(--ctn-hover); color: var(--el-text-color-primary); }

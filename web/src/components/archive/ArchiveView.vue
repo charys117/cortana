@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from "vue";
+import { computed, onMounted, onUnmounted } from "vue";
 import { arc, loadChannels, openChannel } from "../../archive";
 import ChannelList from "./ChannelList.vue";
 import MessageList from "./MessageList.vue";
@@ -11,12 +11,25 @@ const current = computed(() =>
   arc.channels.find((c) => c.id === arc.currentChannelId),
 );
 
-onMounted(async () => {
-  if (!arc.channelsLoaded) await loadChannels();
-  // deep link: #archive/<channelId>
+// deep link + browser back/forward: #archive/<channelId>
+function syncFromHash() {
   const m = location.hash.match(/^#archive\/(\d+)$/);
   if (m && m[1] !== arc.currentChannelId) openChannel(m[1]);
+}
+
+// the pane error can come from the channel index or the message load;
+// retry whichever failed
+function retry() {
+  loadChannels();
+  if (arc.currentChannelId) openChannel(arc.currentChannelId);
+}
+
+onMounted(async () => {
+  window.addEventListener("hashchange", syncFromHash);
+  if (!arc.channelsLoaded) await loadChannels();
+  syncFromHash();
 });
+onUnmounted(() => window.removeEventListener("hashchange", syncFromHash));
 </script>
 
 <template>
@@ -48,13 +61,13 @@ onMounted(async () => {
       <div v-if="arc.error" class="pane-err">
         <el-result icon="error" title="加载失败" :sub-title="arc.error">
           <template #extra>
-            <el-button type="primary" @click="loadChannels">重试</el-button>
+            <el-button type="primary" @click="retry">重试</el-button>
           </template>
         </el-result>
       </div>
       <MessageList v-else-if="arc.currentChannelId" />
       <div v-else class="pane-empty">
-        <el-empty description="从左侧选择一个频道, 或使用右上角搜索" />
+        <el-empty description="从左侧选择一个频道, 或使用右上角搜索" :image-size="110" />
       </div>
     </div>
 
