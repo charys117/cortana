@@ -1,15 +1,16 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import zhCn from "element-plus/es/locale/lang/zh-cn";
 import { useRoute } from "vue-router";
 import { dirty, discard, load, save, store } from "./store";
-import ConfigView from "./components/ConfigView.vue";
+import SettingsView from "./components/SettingsView.vue";
 import EmojiPicker from "./components/EmojiPicker.vue";
 
 const saving = ref(false);
 const route = useRoute();
 
 // the archive replaces the whole layout only once auth/config loading settled;
-// until then the config layout (loading / token gate / error) stays up
+// until then the settings layout (loading / token gate / error) stays up
 const blocked = computed(
   () => route.name === "archive" && (store.loading || store.needToken || !!store.error),
 );
@@ -37,7 +38,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <ConfigView v-if="blocked" />
+  <el-config-provider :locale="zhCn">
+  <SettingsView v-if="blocked" />
   <router-view v-else />
 
   <transition name="rise">
@@ -49,6 +51,7 @@ onUnmounted(() => {
   </transition>
 
   <EmojiPicker />
+  </el-config-provider>
 </template>
 
 <style scoped>

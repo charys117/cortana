@@ -25,6 +25,9 @@ const barkUsers = computed(() =>
         <Field label="推送分组">
           <el-input v-model="store.config.bark.post.group" class="w140" />
         </Field>
+        <Field label="推送内容 (留空则用默认文案)">
+          <el-input v-model="store.config.bark.post.body" class="w200" />
+        </Field>
         <Field label="推送图标 URL">
           <el-input v-model="store.config.bark.post.icon" class="w340" />
         </Field>
@@ -46,5 +49,6 @@ const barkUsers = computed(() =>
 .head { font-weight: 600; margin-bottom: 12px; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; align-items: flex-end; }
 .w140 { width: 140px; }
+.w200 { width: 200px; }
 .w340 { width: 340px; max-width: 100%; }
 </style>

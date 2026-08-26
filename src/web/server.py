@@ -184,6 +184,8 @@ def build_app():
     # history-mode SPA routes: serve index.html so deep links survive refresh
     app.router.add_get("/archive", index)
     app.router.add_get("/archive/{tail:.*}", index)
+    app.router.add_get("/settings", index)
+    app.router.add_get("/config", index)
     app.router.add_get("/api/config", get_config)
     app.router.add_put("/api/config", put_config)
     app.router.add_get("/api/guild", get_guild)

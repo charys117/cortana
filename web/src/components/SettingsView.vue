@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { setToken } from "../api";
-import { load, store } from "../store";
+import { arc } from "../archive";
+import { dirty, load, save, store } from "../store";
 import PersonasSection from "../sections/PersonasSection.vue";
 import EmojiSection from "../sections/EmojiSection.vue";
 import BoardSection from "../sections/BoardSection.vue";
@@ -22,6 +23,12 @@ const NAV = [
 ];
 
 const router = useRouter();
+const activeSec = ref("personas");
+
+function closeSettings() {
+  // land back in the channel that was open
+  router.push(arc.currentChannelId ? `/archive/${arc.currentChannelId}` : "/archive");
+}
 
 // --- in-page token gate (replaces the old blocking prompt()) ---
 const tokenInput = ref("");
@@ -31,12 +38,49 @@ function submitToken() {
   if (!v) return;
   setToken(v);
   tokenInput.value = "";
+  store.needToken = false;
+  store.tokenMessage = "";
+  // token expired mid-session: the edits are still in store.config, retry the
+  // save instead of reloading over them
+  if (store.config && dirty.value) save();
+  else load();
+}
+
+async function reload() {
+  if (dirty.value) {
+    try {
+      await ElMessageBox.confirm("重新加载将丢弃当前未保存的修改。", "放弃修改?", {
+        confirmButtonText: "丢弃并重新加载",
+        cancelButtonText: "取消",
+        type: "warning",
+      });
+    } catch {
+      return;
+    }
+  }
   load();
 }
 
-function scrollTo(id) {
-  document.getElementById("sec-" + id)?.scrollIntoView({ behavior: "smooth" });
+function onScroll() {
+  if (!store.config) return;
+  let cur = NAV[0][0];
+  for (const [id] of NAV) {
+    const el = document.getElementById("sec-" + id);
+    if (el && el.getBoundingClientRect().top <= 120) cur = id;
+  }
+  // the last section can be too short to ever cross the threshold
+  if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 8) {
+    cur = NAV[NAV.length - 1][0];
+  }
+  activeSec.value = cur;
 }
+
+onMounted(() => {
+  window.addEventListener("scroll", onScroll, { passive: true });
+});
+onUnmounted(() => {
+  window.removeEventListener("scroll", onScroll);
+});
 </script>
 
 <template>
@@ -44,9 +88,29 @@ function scrollTo(id) {
     <aside>
       <div class="brand">
         <img src="/favicon.svg" alt="" />
-        <span>Cortana 配置台</span>
+        <span>Cortana</span>
+        <el-button
+          v-if="store.config"
+          class="brand-btn"
+          text
+          size="small"
+          title="返回 Cortana"
+          @click="closeSettings"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="17"
+            height="17"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </el-button>
       </div>
-      <div class="guild-head">
+      <div v-if="store.guild || store.config" class="guild-head">
         <template v-if="store.guild">
           <img v-if="store.guild.guild.icon" :src="store.guild.guild.icon" alt="" />
           <div>
@@ -59,11 +123,19 @@ function scrollTo(id) {
         <div v-else class="g-sub">⚠️ bot 未连接, 服务器数据不可用</div>
       </div>
       <nav>
-        <a v-for="[id, label] in NAV" :key="id" @click="scrollTo(id)">{{ label }}</a>
+        <template v-if="store.config">
+          <a
+            v-for="[id, label] in NAV"
+            :key="id"
+            :href="'#sec-' + id"
+            :class="{ active: activeSec === id }"
+          >
+            {{ label }}
+          </a>
+        </template>
       </nav>
       <div class="side-actions">
-        <el-button class="reload" @click="router.push('/archive')">📂 归档浏览</el-button>
-        <el-button class="reload" @click="load">重新加载</el-button>
+        <el-button class="reload" @click="reload">重新加载</el-button>
       </div>
     </aside>
 
@@ -82,7 +154,7 @@ function scrollTo(id) {
             @keydown.enter="submitToken"
           />
           <el-button type="primary" :disabled="!tokenInput.trim()" @click="submitToken">
-            进入配置台
+            进入
           </el-button>
           <div v-if="store.tokenMessage" class="gate-err">{{ store.tokenMessage }}</div>
         </div>
@@ -95,9 +167,9 @@ function scrollTo(id) {
         </el-result>
       </div>
       <template v-else-if="store.config">
-        <h1>Cortana 配置台</h1>
+        <h1>设置</h1>
         <div class="subtitle">
-          修改后点击底部「保存到集群」即时生效 · config.yml 会自动更新
+          修改后点击底部「保存到集群」即时生效 · 配置保存在 PostgreSQL
         </div>
         <PersonasSection />
         <EmojiSection />
@@ -114,11 +186,13 @@ function scrollTo(id) {
 <style scoped>
 .layout { display: flex; min-height: 100vh; }
 
+/* geometry mirrors the archive sidebar (.chan-side in ArchiveView) so the
+   brand row and bottom button don't shift when the views swap */
 aside {
-  width: 232px;
+  width: 240px;
   flex-shrink: 0;
   background: var(--ctn-sidebar);
-  padding: 16px 8px;
+  padding: 16px 8px 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -130,11 +204,13 @@ aside {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px 12px;
+  padding: 0 4px 12px 8px;
   font-weight: 700;
   font-size: 15px;
 }
 .brand img { width: 28px; height: 28px; }
+.brand .brand-btn { margin-left: auto; padding: 5px 6px; color: var(--el-text-color-secondary); }
+.brand .brand-btn:hover { color: var(--el-text-color-primary); }
 .guild-head { display: flex; align-items: center; gap: 10px; padding: 8px 10px 16px; }
 .guild-head img { width: 40px; height: 40px; border-radius: 12px; }
 .g-name { font-weight: 700; }
@@ -147,8 +223,10 @@ aside nav a {
   font-size: 15px;
   cursor: pointer;
 }
-aside nav a:hover { background: var(--ctn-hover); color: var(--el-text-color-primary); }
-.side-actions { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+aside nav a { text-decoration: none; }
+aside nav a:hover,
+aside nav a.active { background: var(--ctn-hover); color: var(--el-text-color-primary); }
+.side-actions { padding: 8px 0; display: flex; flex-direction: column; gap: 8px; }
 .reload { width: 100%; margin-left: 0; }
 
 main { flex: 1; padding: 32px 40px 120px; max-width: 980px; }

@@ -1,16 +1,24 @@
 <script setup>
 import { computed, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { arc, loadChannels, openChannel } from "../../archive";
 import ChannelList from "./ChannelList.vue";
 import MessageList from "./MessageList.vue";
 import SearchPanel from "./SearchPanel.vue";
 
 const route = useRoute();
+const router = useRouter();
 
 const current = computed(() =>
   arc.channels.find((c) => c.id === arc.currentChannelId),
 );
+
+// the pane error can come from the channel index or the message load;
+// retry whichever failed
+function retry() {
+  loadChannels();
+  if (arc.currentChannelId) openChannel(arc.currentChannelId);
+}
 
 onMounted(async () => {
   if (!arc.channelsLoaded) await loadChannels();
@@ -19,11 +27,21 @@ onMounted(async () => {
   if (id && id !== arc.currentChannelId) openChannel(id);
 });
 
-// browser back/forward between /archive/<a> and /archive/<b>
+// URL → data: browser back/forward between /archive/<a> and /archive/<b>
 watch(
   () => route.params.channelId,
   (id) => {
     if (route.name === "archive" && id && id !== arc.currentChannelId) openChannel(id);
+  },
+);
+
+// data → URL: channel opened via ChannelList / search / reply jump
+watch(
+  () => arc.currentChannelId,
+  (id) => {
+    if (id && route.name === "archive" && route.params.channelId !== id) {
+      router.push(`/archive/${id}`);
+    }
   },
 );
 </script>
@@ -33,12 +51,32 @@ watch(
     <aside class="chan-side">
       <div class="brand">
         <img src="/favicon.svg" alt="" />
-        <span>归档浏览</span>
+        <span>Cortana</span>
+        <el-button
+          class="brand-btn"
+          text
+          size="small"
+          title="设置"
+          @click="$router.push('/settings')"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="17"
+            height="17"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="3.2" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.08a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.08a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.03z" />
+          </svg>
+        </el-button>
       </div>
       <ChannelList />
       <div class="side-actions">
         <el-button class="wide" @click="loadChannels">刷新频道</el-button>
-        <el-button class="wide" @click="$router.push('/')">← 返回配置台</el-button>
       </div>
     </aside>
 
@@ -57,13 +95,13 @@ watch(
       <div v-if="arc.error" class="pane-err">
         <el-result icon="error" title="加载失败" :sub-title="arc.error">
           <template #extra>
-            <el-button type="primary" @click="loadChannels">重试</el-button>
+            <el-button type="primary" @click="retry">重试</el-button>
           </template>
         </el-result>
       </div>
       <MessageList v-else-if="arc.currentChannelId" />
       <div v-else class="pane-empty">
-        <el-empty description="从左侧选择一个频道, 或使用右上角搜索" />
+        <el-empty description="从左侧选择一个频道, 或使用右上角搜索" :image-size="110" />
       </div>
     </div>
 
@@ -89,11 +127,13 @@ watch(
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 16px 12px;
+  padding: 0 12px 12px 16px;
   font-weight: 700;
   font-size: 15px;
 }
 .brand img { width: 28px; height: 28px; }
+.brand .brand-btn { margin-left: auto; padding: 5px 6px; color: var(--el-text-color-secondary); }
+.brand .brand-btn:hover { color: var(--el-text-color-primary); }
 .side-actions {
   padding: 8px;
   display: flex;

@@ -1,5 +1,4 @@
 import { computed, reactive } from "vue";
-import { ElMessage } from "element-plus";
 import { clearToken, getConfig, getGuild, hasToken, putConfig } from "./api";
 
 export const store = reactive({
@@ -21,14 +20,24 @@ export const members = computed(() =>
   (store.guild?.members ?? []).filter((m) => !m.bot),
 );
 
+// keys the sections write into unconditionally: ensure they exist before the
+// savedJson snapshot, so a sparse config neither crashes nor starts out dirty
+function normalize(config) {
+  config.pair ??= [];
+  config.archive_keyword ??= {};
+  config.archive_embed ??= {};
+  config.award ??= {};
+  return config;
+}
+
 export async function load() {
   store.loading = true;
   store.error = "";
   store.needToken = false;
   try {
     const [c, g] = await Promise.all([getConfig(), getGuild().catch(() => null)]);
-    store.config = c.config;
-    store.savedJson = JSON.stringify(c.config);
+    store.config = normalize(c.config);
+    store.savedJson = JSON.stringify(store.config);
     store.guild = g;
   } catch (e) {
     if (e.auth) {
@@ -49,8 +58,11 @@ export async function save() {
     ElMessage.success("已保存并热更新");
   } catch (e) {
     if (e.auth) {
+      // keep the edited config; the gate re-collects the token and the
+      // caller retries the save, so nothing is lost
       clearToken();
-      ElMessage.error("令牌无效或已过期, 刷新页面后重新输入");
+      store.needToken = true;
+      store.tokenMessage = "令牌已失效, 重新输入后将继续保存当前修改";
     } else {
       ElMessage.error("保存失败: " + e.message);
     }

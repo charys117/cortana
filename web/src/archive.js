@@ -5,7 +5,6 @@
 // end-to-end here; ordering decisions (before/after cursors) happen server-side.
 import { reactive } from "vue";
 import { api, token } from "./api";
-import { router } from "./router";
 import { store } from "./store";
 
 export const arc = reactive({
@@ -83,13 +82,13 @@ async function loadPane(channelId, query, jumpTarget = "") {
   }
 }
 
+// data-only: ArchiveView watches arc.currentChannelId and syncs the URL,
+// so this module stays free of a circular import on the router
 export function openChannel(id) {
-  router.push(`/archive/${id}`);
   return loadPane(id, "&limit=50");
 }
 
 export function jumpTo(channelId, messageId) {
-  router.push(`/archive/${channelId}`);
   return loadPane(channelId, `&around=${messageId}&limit=50`, messageId);
 }
 

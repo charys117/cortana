@@ -48,9 +48,17 @@ function addTitle(user, titles) {
         <Field label="徽章颜色">
           <ColorField v-model="pair[1]" />
         </Field>
-        <el-button type="danger" text size="small" @click="delete titles[title]">
-          删除
-        </el-button>
+        <el-popconfirm
+          :title="`删除称号「${title}」?`"
+          confirm-button-text="删除"
+          cancel-button-text="取消"
+          confirm-button-type="danger"
+          @confirm="delete titles[title]"
+        >
+          <template #reference>
+            <el-button type="danger" text size="small">删除</el-button>
+          </template>
+        </el-popconfirm>
       </div>
 
       <el-popover v-model:visible="st(user).open" width="240" trigger="click">

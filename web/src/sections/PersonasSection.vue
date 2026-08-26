@@ -10,7 +10,15 @@ const addName = ref("");
 
 function addPersona() {
   const name = addName.value.trim();
-  if (!name || !/^[a-z0-9_]+$/.test(name) || store.config.cortana[name]) return;
+  if (!name) return;
+  if (!/^[a-z0-9_]+$/.test(name)) {
+    ElMessage.warning("形象标识只能用小写字母、数字和下划线");
+    return;
+  }
+  if (store.config.cortana[name]) {
+    ElMessage.warning(`形象「${name}」已存在`);
+    return;
+  }
   store.config.cortana[name] = {
     display_name: name,
     color: 5793266,
