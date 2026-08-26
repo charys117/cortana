@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import zhCn from "element-plus/es/locale/lang/zh-cn";
 import { setToken } from "./api";
+import { arc } from "./archive";
 import { dirty, discard, load, save, store } from "./store";
 import ArchiveView from "./components/archive/ArchiveView.vue";
 import EmojiPicker from "./components/EmojiPicker.vue";
@@ -26,16 +27,22 @@ const NAV = [
 const saving = ref(false);
 const activeSec = ref("personas");
 
-// --- config vs archive view, synced to the URL hash (#archive[/channelId]) ---
-const view = ref(location.hash.startsWith("#archive") ? "archive" : "config");
+// --- archive (default) vs settings view, synced to the URL hash ---
+// "#settings" (or legacy "#config") opens the config editor; everything else,
+// including "#archive/<channelId>" deep links, is the archive
+const isSettings = () => /^#(settings|config)/.test(location.hash);
+const view = ref(isSettings() ? "config" : "archive");
 function onHashChange() {
-  view.value = location.hash.startsWith("#archive") ? "archive" : "config";
+  view.value = isSettings() ? "config" : "archive";
 }
-function openArchive() {
-  location.hash = "#archive";
+function openSettings() {
+  location.hash = "#settings";
 }
-function closeArchive() {
-  location.hash = "#config";
+function closeSettings() {
+  // land back in the channel that was open
+  location.hash = arc.currentChannelId
+    ? "#archive/" + arc.currentChannelId
+    : "#archive";
 }
 // the archive replaces the whole layout only once auth/config loading settled
 const archiveReady = computed(
@@ -115,12 +122,22 @@ onUnmounted(() => {
 
 <template>
   <el-config-provider :locale="zhCn">
-  <ArchiveView v-if="archiveReady" @back="closeArchive" />
+  <ArchiveView v-if="archiveReady" @settings="openSettings" />
   <div v-else class="layout">
     <aside>
       <div class="brand">
         <img src="/favicon.svg" alt="" />
-        <span>Cortana 配置台</span>
+        <span>Cortana</span>
+        <el-button
+          v-if="store.config"
+          class="brand-btn"
+          text
+          size="small"
+          title="返回 Cortana"
+          @click="closeSettings"
+        >
+          ✕
+        </el-button>
       </div>
       <div v-if="store.guild || store.config" class="guild-head">
         <template v-if="store.guild">
@@ -147,7 +164,6 @@ onUnmounted(() => {
         </template>
       </nav>
       <div class="side-actions">
-        <el-button class="reload" @click="openArchive">📂 归档浏览</el-button>
         <el-button class="reload" @click="reload">重新加载</el-button>
       </div>
     </aside>
@@ -167,7 +183,7 @@ onUnmounted(() => {
             @keydown.enter="submitToken"
           />
           <el-button type="primary" :disabled="!tokenInput.trim()" @click="submitToken">
-            进入配置台
+            进入
           </el-button>
           <div v-if="store.tokenMessage" class="gate-err">{{ store.tokenMessage }}</div>
         </div>
@@ -180,7 +196,7 @@ onUnmounted(() => {
         </el-result>
       </div>
       <template v-else-if="store.config">
-        <h1>{{ store.config.guild || "Cortana" }} 配置台</h1>
+        <h1>设置</h1>
         <div class="subtitle">
           修改后点击底部「保存到集群」即时生效 · 配置保存在 PostgreSQL
         </div>
@@ -231,6 +247,7 @@ aside {
   font-size: 15px;
 }
 .brand img { width: 28px; height: 28px; }
+.brand .brand-btn { margin-left: auto; }
 .guild-head { display: flex; align-items: center; gap: 10px; padding: 8px 10px 16px; }
 .guild-head img { width: 40px; height: 40px; border-radius: 12px; }
 .g-name { font-weight: 700; }

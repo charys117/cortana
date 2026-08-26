@@ -5,7 +5,7 @@ import ChannelList from "./ChannelList.vue";
 import MessageList from "./MessageList.vue";
 import SearchPanel from "./SearchPanel.vue";
 
-defineEmits(["back"]);
+defineEmits(["settings"]);
 
 const current = computed(() =>
   arc.channels.find((c) => c.id === arc.currentChannelId),
@@ -37,12 +37,32 @@ onUnmounted(() => window.removeEventListener("hashchange", syncFromHash));
     <aside class="chan-side">
       <div class="brand">
         <img src="/favicon.svg" alt="" />
-        <span>归档浏览</span>
+        <span>Cortana</span>
+        <el-button
+          class="brand-btn"
+          text
+          size="small"
+          title="设置"
+          @click="$emit('settings')"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="17"
+            height="17"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="3.2" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.08a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.08a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.03z" />
+          </svg>
+        </el-button>
       </div>
       <ChannelList />
       <div class="side-actions">
         <el-button class="wide" @click="loadChannels">刷新频道</el-button>
-        <el-button class="wide" @click="$emit('back')">← 返回配置台</el-button>
       </div>
     </aside>
 
@@ -93,11 +113,13 @@ onUnmounted(() => window.removeEventListener("hashchange", syncFromHash));
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 16px 12px;
+  padding: 0 12px 12px 16px;
   font-weight: 700;
   font-size: 15px;
 }
 .brand img { width: 28px; height: 28px; }
+.brand .brand-btn { margin-left: auto; padding: 5px 6px; color: var(--el-text-color-secondary); }
+.brand .brand-btn:hover { color: var(--el-text-color-primary); }
 .side-actions {
   padding: 8px;
   display: flex;

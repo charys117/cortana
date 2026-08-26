@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { arc, fmtDay, loadNewer, loadOlder } from "../../archive";
 import MessageItem from "./MessageItem.vue";
 import EditHistoryDialog from "./EditHistoryDialog.vue";
@@ -31,6 +31,14 @@ const rows = computed(() => {
     prev = m;
   }
   return out;
+});
+
+// remount over already-loaded messages (back from settings): start at bottom
+onMounted(async () => {
+  if (arc.loading || !arc.messages.length) return;
+  await nextTick();
+  const el = box.value;
+  if (el) el.scrollTop = el.scrollHeight;
 });
 
 // after a full pane load: bottom for a channel open, centered for a jump
