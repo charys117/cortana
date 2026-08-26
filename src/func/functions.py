@@ -10,8 +10,10 @@ import discord
 
 from src.core.archiver import archiver
 from src.core.cortana import cortana
-from src.core.init import bot, cfg, tz
+from src.core.init import Log, bot, cfg, tz
 from src.core.tools import daily_report, warning
+
+log = Log.get("func")
 
 
 class Func:
@@ -92,4 +94,5 @@ class Func:
                 description += f",下载失败 {stats['failed']}"
             await channel.send(embed=discord.Embed(description=description))
         except Exception as e:
+            log.exception("daily archive failed")
             await warning(f"每日归档失败: {e}", channel=channel)
