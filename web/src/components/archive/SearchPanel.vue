@@ -67,6 +67,15 @@ function channelName(r) {
           :value="u.id"
         />
       </el-select>
+      <el-date-picker
+        v-model="s.dateRange"
+        type="daterange"
+        range-separator="至"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+        unlink-panels
+        class="date-range"
+      />
       <el-button type="primary" :loading="s.loading" @click="runSearch()">搜索</el-button>
       <div v-if="s.error" class="search-err">{{ s.error }}</div>
     </div>
@@ -129,6 +138,7 @@ function channelName(r) {
   border-bottom: 1px solid var(--el-border-color);
 }
 .search-err { font-size: 12px; color: var(--el-color-danger); }
+.search-form :deep(.date-range) { width: 100%; }
 
 .results { flex: 1; overflow-y: auto; padding: 8px; }
 .result {
