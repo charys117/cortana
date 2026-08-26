@@ -82,6 +82,7 @@ class Archiver:
         self.media_key = load_key()
         if self.media_key is None:
             self.log.warning("ARCHIVE_MEDIA_KEY not set - media stored unencrypted")
+        self._download_lock = asyncio.Lock()
 
     # -- row builders ------------------------------------------------------
 
@@ -333,7 +334,14 @@ class Archiver:
     async def download_pending(self):
         """
         Concurrently download attachments not yet stored. Returns (ok, failed).
+
+        Serialized with a lock: a manual /sync and a listener-triggered run
+        otherwise process the same rows and deadlock on the final updates.
         """
+        async with self._download_lock:
+            return await self._download_pending_locked()
+
+    async def _download_pending_locked(self):
         async with get_session() as session:
             rows = (
                 (
