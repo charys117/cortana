@@ -136,7 +136,17 @@ onUnmounted(() => {
           title="返回 Cortana"
           @click="closeSettings"
         >
-          ✕
+          <svg
+            viewBox="0 0 24 24"
+            width="17"
+            height="17"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
         </el-button>
       </div>
       <div v-if="store.guild || store.config" class="guild-head">
@@ -226,11 +236,13 @@ onUnmounted(() => {
 <style scoped>
 .layout { display: flex; min-height: 100vh; }
 
+/* geometry mirrors the archive sidebar (.chan-side in ArchiveView) so the
+   brand row and bottom button don't shift when the views swap */
 aside {
-  width: 232px;
+  width: 240px;
   flex-shrink: 0;
   background: var(--ctn-sidebar);
-  padding: 16px 8px;
+  padding: 16px 8px 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -242,12 +254,13 @@ aside {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px 12px;
+  padding: 0 4px 12px 8px;
   font-weight: 700;
   font-size: 15px;
 }
 .brand img { width: 28px; height: 28px; }
-.brand .brand-btn { margin-left: auto; }
+.brand .brand-btn { margin-left: auto; padding: 5px 6px; color: var(--el-text-color-secondary); }
+.brand .brand-btn:hover { color: var(--el-text-color-primary); }
 .guild-head { display: flex; align-items: center; gap: 10px; padding: 8px 10px 16px; }
 .guild-head img { width: 40px; height: 40px; border-radius: 12px; }
 .g-name { font-weight: 700; }
@@ -263,7 +276,7 @@ aside nav a {
 aside nav a { text-decoration: none; }
 aside nav a:hover,
 aside nav a.active { background: var(--ctn-hover); color: var(--el-text-color-primary); }
-.side-actions { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.side-actions { padding: 8px 0; display: flex; flex-direction: column; gap: 8px; }
 .reload { width: 100%; margin-left: 0; }
 
 main { flex: 1; padding: 32px 40px 120px; max-width: 980px; }
