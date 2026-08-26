@@ -5,6 +5,7 @@
 // end-to-end here; ordering decisions (before/after cursors) happen server-side.
 import { reactive } from "vue";
 import { api, token } from "./api";
+import { router } from "./router";
 import { store } from "./store";
 
 export const arc = reactive({
@@ -83,12 +84,12 @@ async function loadPane(channelId, query, jumpTarget = "") {
 }
 
 export function openChannel(id) {
-  location.hash = "#archive/" + id;
+  router.push(`/archive/${id}`);
   return loadPane(id, "&limit=50");
 }
 
 export function jumpTo(channelId, messageId) {
-  location.hash = "#archive/" + channelId;
+  router.push(`/archive/${channelId}`);
   return loadPane(channelId, `&around=${messageId}&limit=50`, messageId);
 }
 

@@ -1,11 +1,12 @@
 <script setup>
-import { computed, onMounted } from "vue";
+import { computed, onMounted, watch } from "vue";
+import { useRoute } from "vue-router";
 import { arc, loadChannels, openChannel } from "../../archive";
 import ChannelList from "./ChannelList.vue";
 import MessageList from "./MessageList.vue";
 import SearchPanel from "./SearchPanel.vue";
 
-defineEmits(["back"]);
+const route = useRoute();
 
 const current = computed(() =>
   arc.channels.find((c) => c.id === arc.currentChannelId),
@@ -13,10 +14,18 @@ const current = computed(() =>
 
 onMounted(async () => {
   if (!arc.channelsLoaded) await loadChannels();
-  // deep link: #archive/<channelId>
-  const m = location.hash.match(/^#archive\/(\d+)$/);
-  if (m && m[1] !== arc.currentChannelId) openChannel(m[1]);
+  // deep link: /archive/<channelId>
+  const id = route.params.channelId;
+  if (id && id !== arc.currentChannelId) openChannel(id);
 });
+
+// browser back/forward between /archive/<a> and /archive/<b>
+watch(
+  () => route.params.channelId,
+  (id) => {
+    if (route.name === "archive" && id && id !== arc.currentChannelId) openChannel(id);
+  },
+);
 </script>
 
 <template>
@@ -29,7 +38,7 @@ onMounted(async () => {
       <ChannelList />
       <div class="side-actions">
         <el-button class="wide" @click="loadChannels">刷新频道</el-button>
-        <el-button class="wide" @click="$emit('back')">← 返回配置台</el-button>
+        <el-button class="wide" @click="$router.push('/')">← 返回配置台</el-button>
       </div>
     </aside>
 
