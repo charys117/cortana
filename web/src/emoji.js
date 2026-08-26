@@ -69,9 +69,20 @@ export function formatUnits(units, total, rowSize = 5) {
   return result;
 }
 
-// tiny renderer for the Discord-message preview: custom emoji, :shortcode:, **bold**
+// tiny renderer for Discord-message previews and archived messages:
+// links, `code`, custom emoji, :shortcode:, **bold**
 export function mdToHtml(text) {
-  let html = esc(text);
+  // autolink on the raw text (odd split indices are URLs), escaping each part
+  const html0 = String(text ?? "")
+    .split(/(https?:\/\/[^\s<>]+)/g)
+    .map((seg, i) => {
+      if (i % 2 === 0) return esc(seg);
+      const url = seg.replace(/[),.;!?]+$/, "");
+      const trail = seg.slice(url.length);
+      return `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>${esc(trail)}`;
+    })
+    .join("");
+  let html = html0.replace(/`([^`\n]+)`/g, "<code>$1</code>");
   html = html.replace(/&lt;(a?):(\w+):(\d+)&gt;/g, (_, a, n, id) =>
     `<img class="em" src="https://cdn.discordapp.com/emojis/${id}.${a === "a" ? "gif" : "png"}" title="${n}">`);
   html = html.replace(/:([\w+-]+):/g, (m0, n) =>

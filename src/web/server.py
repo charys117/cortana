@@ -20,6 +20,7 @@ from src.core.init import (
     save_cfg,
     update_cfg,
 )
+from src.web.archive_api import register_archive_routes
 
 log = Log.get("web")
 
@@ -75,7 +76,11 @@ def _validate(config):
 async def auth_middleware(request, handler):
     token = os.environ.get("CORTANA_WEB_TOKEN")
     if token and request.path.startswith("/api/"):
-        supplied = request.headers.get("Authorization", "").removeprefix("Bearer ")
+        # query-param fallback for <img>/<video> which cannot send headers;
+        # the token lands in access logs, same trust model as the shared token
+        supplied = request.headers.get("Authorization", "").removeprefix(
+            "Bearer "
+        ) or request.query.get("token", "")
         if not secrets.compare_digest(supplied, token):
             return web.json_response({"error": "unauthorized"}, status=401)
     return await handler(request)
@@ -179,6 +184,7 @@ def build_app():
     app.router.add_get("/api/config", get_config)
     app.router.add_put("/api/config", put_config)
     app.router.add_get("/api/guild", get_guild)
+    register_archive_routes(app)
     app.router.add_get("/favicon.svg", favicon)
     app.router.add_get("/avatars/{name}", get_avatar)
     assets = os.path.join(STATIC_DIR, "assets")
