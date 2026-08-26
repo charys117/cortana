@@ -1,21 +1,17 @@
 <script setup>
-import { computed, onMounted, onUnmounted } from "vue";
+import { computed, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { arc, loadChannels, openChannel } from "../../archive";
 import ChannelList from "./ChannelList.vue";
 import MessageList from "./MessageList.vue";
 import SearchPanel from "./SearchPanel.vue";
 
-defineEmits(["settings"]);
+const route = useRoute();
+const router = useRouter();
 
 const current = computed(() =>
   arc.channels.find((c) => c.id === arc.currentChannelId),
 );
-
-// deep link + browser back/forward: #archive/<channelId>
-function syncFromHash() {
-  const m = location.hash.match(/^#archive\/(\d+)$/);
-  if (m && m[1] !== arc.currentChannelId) openChannel(m[1]);
-}
 
 // the pane error can come from the channel index or the message load;
 // retry whichever failed
@@ -25,11 +21,29 @@ function retry() {
 }
 
 onMounted(async () => {
-  window.addEventListener("hashchange", syncFromHash);
   if (!arc.channelsLoaded) await loadChannels();
-  syncFromHash();
+  // deep link: /archive/<channelId>
+  const id = route.params.channelId;
+  if (id && id !== arc.currentChannelId) openChannel(id);
 });
-onUnmounted(() => window.removeEventListener("hashchange", syncFromHash));
+
+// URL → data: browser back/forward between /archive/<a> and /archive/<b>
+watch(
+  () => route.params.channelId,
+  (id) => {
+    if (route.name === "archive" && id && id !== arc.currentChannelId) openChannel(id);
+  },
+);
+
+// data → URL: channel opened via ChannelList / search / reply jump
+watch(
+  () => arc.currentChannelId,
+  (id) => {
+    if (id && route.name === "archive" && route.params.channelId !== id) {
+      router.push(`/archive/${id}`);
+    }
+  },
+);
 </script>
 
 <template>
@@ -43,7 +57,7 @@ onUnmounted(() => window.removeEventListener("hashchange", syncFromHash));
           text
           size="small"
           title="设置"
-          @click="$emit('settings')"
+          @click="$router.push('/settings')"
         >
           <svg
             viewBox="0 0 24 24"

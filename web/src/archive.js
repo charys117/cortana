@@ -82,13 +82,13 @@ async function loadPane(channelId, query, jumpTarget = "") {
   }
 }
 
+// data-only: ArchiveView watches arc.currentChannelId and syncs the URL,
+// so this module stays free of a circular import on the router
 export function openChannel(id) {
-  location.hash = "#archive/" + id;
   return loadPane(id, "&limit=50");
 }
 
 export function jumpTo(channelId, messageId) {
-  location.hash = "#archive/" + channelId;
   return loadPane(channelId, `&around=${messageId}&limit=50`, messageId);
 }
 
