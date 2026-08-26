@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "vue";
-import { arc, fmtTime, jumpTo, loadUsers, runSearch } from "../../archive";
+import { computed, onUnmounted, watch } from "vue";
+import { arc, fmtTime, jumpTo, loadUsers, resetSearch, runSearch } from "../../archive";
 import { esc } from "../../emoji";
 
 const s = arc.search;
@@ -13,14 +13,39 @@ const userOptions = computed(() =>
   })),
 );
 
+// live search: debounce typing, refresh filters immediately; a query that
+// drops below the minimum clears the results instead of leaving stale ones
+let debounceTimer = null;
+watch(
+  () => [s.q, s.channelId, s.authorId, s.dateRange],
+  ([q], [oldQ]) => {
+    clearTimeout(debounceTimer);
+    if (q.trim().length < 2) {
+      resetSearch();
+      return;
+    }
+    debounceTimer = setTimeout(() => runSearch(), q === oldQ ? 0 : 350);
+  },
+);
+onUnmounted(() => clearTimeout(debounceTimer));
+
+// IME composition Enter (选词) must not trigger a search
+function onEnter(e) {
+  if (e.isComposing || e.keyCode === 229) return;
+  clearTimeout(debounceTimer);
+  runSearch();
+}
+
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// excerpt around the first hit, hit wrapped in <mark>; everything escaped
+// excerpt around the first hit, hit wrapped in <mark>; everything escaped.
+// q is the executed query, so highlights stay in sync with the results.
 function excerptHtml(content, q) {
-  const c = content || "";
-  const idx = c.toLowerCase().indexOf(q.toLowerCase());
+  const c = (content || "").replace(/\s+/g, " ");
+  const idx = q ? c.toLowerCase().indexOf(q.toLowerCase()) : -1;
+  if (idx < 0) return esc(c.slice(0, 160)) + (c.length > 160 ? "…" : "");
   const start = Math.max(0, idx - 40);
   const end = Math.min(c.length, idx + q.length + 120);
   const seg = (start > 0 ? "…" : "") + c.slice(start, end) + (end < c.length ? "…" : "");
@@ -47,7 +72,7 @@ function channelName(r) {
         v-model="s.q"
         placeholder="搜索消息内容 (至少2个字符)"
         clearable
-        @keydown.enter="runSearch()"
+        @keydown.enter="onEnter"
       >
         <template #prefix>🔍</template>
       </el-input>
@@ -81,6 +106,9 @@ function channelName(r) {
     </div>
 
     <div class="results">
+      <div v-if="s.searched && s.results.length" class="r-count-line">
+        {{ s.results.length }}{{ s.hasMore ? "+" : "" }} 条结果
+      </div>
       <div
         v-for="r in s.results"
         :key="r.id"
@@ -96,7 +124,7 @@ function channelName(r) {
           <b>{{ r.author_name }}</b>
           <span v-if="r.deleted_at" class="r-del">已删除</span>
         </div>
-        <div class="r-content" v-html="excerptHtml(r.content, s.q.trim())" />
+        <div class="r-content" v-html="excerptHtml(r.content, s.executedQ)" />
       </div>
 
       <el-empty
@@ -104,6 +132,9 @@ function channelName(r) {
         description="没有找到匹配的消息"
         :image-size="60"
       />
+      <div v-if="!s.searched && !s.loading" class="r-hint">
+        输入关键词搜索归档消息
+      </div>
       <div v-if="s.hasMore" class="more">
         <el-button size="small" text :loading="s.loading" @click="runSearch(true)">
           加载更多结果
@@ -165,11 +196,22 @@ function channelName(r) {
   color: var(--el-text-color-secondary);
   word-break: break-word;
 }
+/* no horizontal padding: it pushes CJK glyphs apart and breaks char spacing */
 .r-content :deep(mark) {
   background: rgba(240, 178, 50, 0.35);
   color: var(--el-text-color-primary);
   border-radius: 2px;
-  padding: 0 1px;
+}
+.r-count-line {
+  font-size: 11px;
+  color: var(--el-text-color-placeholder);
+  padding: 2px 4px 6px;
+}
+.r-hint {
+  text-align: center;
+  padding: 32px 12px;
+  font-size: 13px;
+  color: var(--el-text-color-placeholder);
 }
 .more { text-align: center; padding: 4px 0 12px; }
 </style>

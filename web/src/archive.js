@@ -26,6 +26,7 @@ export const arc = reactive({
     channelId: "",
     authorId: "",
     dateRange: null, // [Date, Date] at local midnight, or null
+    executedQ: "", // the query the current results were produced by (drives highlight + paging)
     results: [],
     hasMore: false,
     searched: false,
@@ -33,6 +34,9 @@ export const arc = reactive({
     error: "",
   },
 });
+
+// bumped on every search/reset so stale responses can be dropped
+let searchSeq = 0;
 
 function handleAuth(e) {
   if (e.auth) {
@@ -132,13 +136,31 @@ export async function loadNewer() {
   }
 }
 
+export function resetSearch() {
+  const s = arc.search;
+  searchSeq++; // invalidate any in-flight response
+  s.executedQ = "";
+  s.results = [];
+  s.hasMore = false;
+  s.searched = false;
+  s.loading = false;
+  s.error = "";
+}
+
 export async function runSearch(more = false) {
   const s = arc.search;
-  const q = s.q.trim();
+  // paging continues the executed query, untouched by later input edits
+  if (more && (s.loading || !s.results.length || !s.executedQ)) return;
+  const q = more ? s.executedQ : s.q.trim();
+  if (!q) {
+    resetSearch();
+    return;
+  }
   if (q.length < 2) {
     s.error = "搜索词至少2个字符";
     return;
   }
+  const seq = ++searchSeq;
   s.loading = true;
   s.error = "";
   try {
@@ -152,15 +174,18 @@ export async function runSearch(more = false) {
       url += `&since=${encodeURIComponent(from.toISOString())}`;
       url += `&until=${encodeURIComponent(until.toISOString())}`;
     }
-    if (more && s.results.length) url += `&before=${s.results[s.results.length - 1].id}`;
+    if (more) url += `&before=${s.results[s.results.length - 1].id}`;
     const data = await api(url);
+    if (seq !== searchSeq) return; // superseded by a newer search/reset
+    s.executedQ = q;
     s.results = more ? [...s.results, ...data.results] : data.results;
     s.hasMore = data.has_more;
     s.searched = true;
   } catch (e) {
-    if (!handleAuth(e)) s.error = e.message;
+    const authErr = handleAuth(e);
+    if (seq === searchSeq && !authErr) s.error = e.message;
   } finally {
-    s.loading = false;
+    if (seq === searchSeq) s.loading = false;
   }
 }
 
