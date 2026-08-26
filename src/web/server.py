@@ -181,11 +181,14 @@ async def get_avatar(request):
 def build_app():
     app = web.Application(middlewares=[auth_middleware])
     app.router.add_get("/", index)
-    # history-mode SPA routes: serve index.html so deep links survive refresh
-    app.router.add_get("/archive", index)
-    app.router.add_get("/archive/{tail:.*}", index)
+    # history-mode SPA routes: serve index.html so deep links survive refresh;
+    # the archive lives at / and /<channelId>, and /archive* only remains for
+    # legacy links (the frontend router redirects them)
+    app.router.add_get(r"/{channel_id:\d+}", index)
     app.router.add_get("/settings", index)
     app.router.add_get("/config", index)
+    app.router.add_get("/archive", index)
+    app.router.add_get("/archive/{tail:.*}", index)
     app.router.add_get("/api/config", get_config)
     app.router.add_put("/api/config", put_config)
     app.router.add_get("/api/guild", get_guild)

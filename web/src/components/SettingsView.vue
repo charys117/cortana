@@ -27,7 +27,7 @@ const activeSec = ref("personas");
 
 function closeSettings() {
   // land back in the channel that was open
-  router.push(arc.currentChannelId ? `/archive/${arc.currentChannelId}` : "/archive");
+  router.push(arc.currentChannelId ? `/${arc.currentChannelId}` : "/");
 }
 
 // --- in-page token gate (replaces the old blocking prompt()) ---

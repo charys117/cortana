@@ -168,6 +168,25 @@ class TestIndex:
         assert resp.status == 503
         assert "npm" in await resp.text()
 
+    async def test_spa_deep_links_serve_index(self, client, tmp_path, monkeypatch):
+        (tmp_path / "index.html").write_text("<!doctype html>", encoding="utf-8")
+        monkeypatch.setattr(server, "STATIC_DIR", str(tmp_path))
+        # the archive lives at / and /<channelId>; /archive* and /config are
+        # legacy paths the frontend router redirects
+        for path in (
+            "/",
+            "/123456789012345678",
+            "/settings",
+            "/config",
+            "/archive",
+            "/archive/123456789012345678",
+        ):
+            resp = await client.get(path)
+            assert resp.status == 200, path
+        # non-numeric garbage is not a SPA route
+        resp = await client.get("/no-such-page")
+        assert resp.status == 404
+
 
 class TestGuildApi:
     async def test_503_before_bot_is_connected(self, client):

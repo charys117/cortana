@@ -22,12 +22,12 @@ function retry() {
 
 onMounted(async () => {
   if (!arc.channelsLoaded) await loadChannels();
-  // deep link: /archive/<channelId>
+  // deep link: /<channelId>
   const id = route.params.channelId;
   if (id && id !== arc.currentChannelId) openChannel(id);
 });
 
-// URL → data: browser back/forward between /archive/<a> and /archive/<b>
+// URL → data: browser back/forward between /<a> and /<b>
 watch(
   () => route.params.channelId,
   (id) => {
@@ -40,7 +40,7 @@ watch(
   () => arc.currentChannelId,
   (id) => {
     if (id && route.name === "archive" && route.params.channelId !== id) {
-      router.push(`/archive/${id}`);
+      router.push(`/${id}`);
     }
   },
 );
