@@ -1,8 +1,9 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import zhCn from "element-plus/es/locale/lang/zh-cn";
 import { setToken } from "./api";
 import { dirty, discard, load, save, store } from "./store";
+import ArchiveView from "./components/archive/ArchiveView.vue";
 import EmojiPicker from "./components/EmojiPicker.vue";
 import PersonasSection from "./sections/PersonasSection.vue";
 import EmojiSection from "./sections/EmojiSection.vue";
@@ -24,6 +25,22 @@ const NAV = [
 
 const saving = ref(false);
 const activeSec = ref("personas");
+
+// --- config vs archive view, synced to the URL hash (#archive[/channelId]) ---
+const view = ref(location.hash.startsWith("#archive") ? "archive" : "config");
+function onHashChange() {
+  view.value = location.hash.startsWith("#archive") ? "archive" : "config";
+}
+function openArchive() {
+  location.hash = "#archive";
+}
+function closeArchive() {
+  location.hash = "#config";
+}
+// the archive replaces the whole layout only once auth/config loading settled
+const archiveReady = computed(
+  () => view.value === "archive" && !store.loading && !store.needToken && !store.error,
+);
 
 // --- in-page token gate (replaces the old blocking prompt()) ---
 const tokenInput = ref("");
@@ -86,17 +103,20 @@ function beforeUnload(e) {
 onMounted(() => {
   window.addEventListener("beforeunload", beforeUnload);
   window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("hashchange", onHashChange);
   load();
 });
 onUnmounted(() => {
   window.removeEventListener("beforeunload", beforeUnload);
   window.removeEventListener("scroll", onScroll);
+  window.removeEventListener("hashchange", onHashChange);
 });
 </script>
 
 <template>
   <el-config-provider :locale="zhCn">
-  <div class="layout">
+  <ArchiveView v-if="archiveReady" @back="closeArchive" />
+  <div v-else class="layout">
     <aside>
       <div class="brand">
         <img src="/favicon.svg" alt="" />
@@ -127,6 +147,7 @@ onUnmounted(() => {
         </template>
       </nav>
       <div class="side-actions">
+        <el-button class="reload" @click="openArchive">📂 归档浏览</el-button>
         <el-button class="reload" @click="reload">重新加载</el-button>
       </div>
     </aside>
@@ -225,8 +246,8 @@ aside nav a {
 aside nav a { text-decoration: none; }
 aside nav a:hover,
 aside nav a.active { background: var(--ctn-hover); color: var(--el-text-color-primary); }
-.side-actions { padding: 8px; }
-.reload { width: 100%; }
+.side-actions { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.reload { width: 100%; margin-left: 0; }
 
 main { flex: 1; padding: 32px 40px 120px; max-width: 980px; }
 h1 { font-size: 22px; margin: 0 0 4px; }

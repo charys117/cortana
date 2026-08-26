@@ -82,6 +82,7 @@ class Archiver:
         self.media_key = load_key()
         if self.media_key is None:
             self.log.warning("ARCHIVE_MEDIA_KEY not set - media stored unencrypted")
+        self._download_lock = asyncio.Lock()
 
     # -- row builders ------------------------------------------------------
 
@@ -271,6 +272,10 @@ class Archiver:
                 processed += 1
                 if processed % 500 == 0:
                     await session.commit()
+                    self.log.info(
+                        f"syncing #{channel.name}: {processed} processed "
+                        f"({stats['new']} new)"
+                    )
             await _upsert(
                 session,
                 SyncStatus,
@@ -300,6 +305,10 @@ class Archiver:
         for channel in guild.text_channels:
             if channel.name in self.exclude:
                 continue
+            # channels the bot can see but not read would 403 on history()
+            if not channel.permissions_for(guild.me).read_message_history:
+                self.log.warning(f"skipping #{channel.name}: no history permission")
+                continue
             targets = [channel] + list(channel.threads)
             try:
                 async for thread in channel.archived_threads(limit=None):
@@ -307,7 +316,12 @@ class Archiver:
             except discord.HTTPException as e:
                 self.log.warning(f"listing archived threads of #{channel.name}: {e}")
             for target in targets:
-                stats = await self.sync_channel(target, full=full)
+                try:
+                    stats = await self.sync_channel(target, full=full)
+                except discord.HTTPException as e:
+                    # one inaccessible channel/thread must not kill the sweep
+                    self.log.warning(f"skipping #{target.name}: {e}")
+                    continue
                 for k in totals:
                     totals[k] += stats[k]
         downloaded, failed = await self.download_pending()
@@ -320,7 +334,14 @@ class Archiver:
     async def download_pending(self):
         """
         Concurrently download attachments not yet stored. Returns (ok, failed).
+
+        Serialized with a lock: a manual /sync and a listener-triggered run
+        otherwise process the same rows and deadlock on the final updates.
         """
+        async with self._download_lock:
+            return await self._download_pending_locked()
+
+    async def _download_pending_locked(self):
         async with get_session() as session:
             rows = (
                 (
