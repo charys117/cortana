@@ -1,7 +1,8 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { setToken } from "./api";
 import { dirty, discard, load, save, store } from "./store";
+import ArchiveView from "./components/archive/ArchiveView.vue";
 import EmojiPicker from "./components/EmojiPicker.vue";
 import PersonasSection from "./sections/PersonasSection.vue";
 import EmojiSection from "./sections/EmojiSection.vue";
@@ -22,6 +23,22 @@ const NAV = [
 ];
 
 const saving = ref(false);
+
+// --- config vs archive view, synced to the URL hash (#archive[/channelId]) ---
+const view = ref(location.hash.startsWith("#archive") ? "archive" : "config");
+function onHashChange() {
+  view.value = location.hash.startsWith("#archive") ? "archive" : "config";
+}
+function openArchive() {
+  location.hash = "#archive";
+}
+function closeArchive() {
+  location.hash = "#config";
+}
+// the archive replaces the whole layout only once auth/config loading settled
+const archiveReady = computed(
+  () => view.value === "archive" && !store.loading && !store.needToken && !store.error,
+);
 
 // --- in-page token gate (replaces the old blocking prompt()) ---
 const tokenInput = ref("");
@@ -53,13 +70,18 @@ function beforeUnload(e) {
 
 onMounted(() => {
   window.addEventListener("beforeunload", beforeUnload);
+  window.addEventListener("hashchange", onHashChange);
   load();
 });
-onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
+onUnmounted(() => {
+  window.removeEventListener("beforeunload", beforeUnload);
+  window.removeEventListener("hashchange", onHashChange);
+});
 </script>
 
 <template>
-  <div class="layout">
+  <ArchiveView v-if="archiveReady" @back="closeArchive" />
+  <div v-else class="layout">
     <aside>
       <div class="brand">
         <img src="/favicon.svg" alt="" />
@@ -81,6 +103,7 @@ onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
         <a v-for="[id, label] in NAV" :key="id" @click="scrollTo(id)">{{ label }}</a>
       </nav>
       <div class="side-actions">
+        <el-button class="reload" @click="openArchive">📂 归档浏览</el-button>
         <el-button class="reload" @click="load">重新加载</el-button>
       </div>
     </aside>
@@ -176,8 +199,8 @@ aside nav a {
   cursor: pointer;
 }
 aside nav a:hover { background: var(--ctn-hover); color: var(--el-text-color-primary); }
-.side-actions { padding: 8px; }
-.reload { width: 100%; }
+.side-actions { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.reload { width: 100%; margin-left: 0; }
 
 main { flex: 1; padding: 32px 40px 120px; max-width: 980px; }
 h1 { font-size: 22px; margin: 0 0 4px; }

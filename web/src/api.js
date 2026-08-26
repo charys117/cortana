@@ -2,7 +2,7 @@
 // A 401 raises an error flagged `auth: true`; the UI renders an in-page token
 // gate instead of prompting per call (parallel calls would prompt repeatedly).
 
-function token() {
+export function token() {
   return localStorage.getItem("cortana_token") || "";
 }
 
