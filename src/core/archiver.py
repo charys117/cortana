@@ -304,6 +304,10 @@ class Archiver:
         for channel in guild.text_channels:
             if channel.name in self.exclude:
                 continue
+            # channels the bot can see but not read would 403 on history()
+            if not channel.permissions_for(guild.me).read_message_history:
+                self.log.warning(f"skipping #{channel.name}: no history permission")
+                continue
             targets = [channel] + list(channel.threads)
             try:
                 async for thread in channel.archived_threads(limit=None):
@@ -311,7 +315,12 @@ class Archiver:
             except discord.HTTPException as e:
                 self.log.warning(f"listing archived threads of #{channel.name}: {e}")
             for target in targets:
-                stats = await self.sync_channel(target, full=full)
+                try:
+                    stats = await self.sync_channel(target, full=full)
+                except discord.HTTPException as e:
+                    # one inaccessible channel/thread must not kill the sweep
+                    self.log.warning(f"skipping #{target.name}: {e}")
+                    continue
                 for k in totals:
                     totals[k] += stats[k]
         downloaded, failed = await self.download_pending()

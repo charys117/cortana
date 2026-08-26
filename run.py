@@ -88,7 +88,7 @@ async def daily():
     try:
         await Func.daily()
     except Exception as e:
-        log.error(f"Daily failed: {e}")
+        log.exception("Daily failed")
         await warning(
             f"每日任务失败: {e}",
             channel=bot.get_channel(cfg["channel"][cfg["daily"]["channel"]]),
