@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { members } from "../store";
+import { members, store } from "../store";
 
 const props = defineProps({ modelValue: { type: String, default: "" } });
 defineEmits(["update:modelValue"]);
@@ -8,6 +8,8 @@ defineEmits(["update:modelValue"]);
 const missing = computed(
   () => props.modelValue && !members.value.some((m) => m.name === props.modelValue),
 );
+// bot offline just means we can't verify — don't claim the member left
+const missingNote = computed(() => (store.guild ? " (不在服务器)" : " (离线, 未验证)"));
 </script>
 
 <template>
@@ -21,7 +23,7 @@ const missing = computed(
     <el-option
       v-if="missing"
       :value="modelValue"
-      :label="modelValue + ' (不在服务器)'"
+      :label="modelValue + missingNote"
     />
     <el-option
       v-for="m in members"

@@ -1,10 +1,12 @@
 <script setup>
+import { ref } from "vue";
 import { store } from "../store";
 import Field from "../components/Field.vue";
 import ChannelSelect from "../components/ChannelSelect.vue";
 import MemberSelect from "../components/MemberSelect.vue";
 
-if (!store.config.pair) store.config.pair = [];
+// guild name/id point the bot at the server itself — locked against slips
+const locked = ref(true);
 </script>
 
 <template>
@@ -13,13 +15,22 @@ if (!store.config.pair) store.config.pair = [];
     <el-card class="card">
       <div class="row">
         <Field label="服务器名称">
-          <el-input v-model="store.config.guild" class="w160" />
+          <el-input v-model="store.config.guild" class="w160" :disabled="locked" />
         </Field>
         <Field label="服务器 ID">
-          <el-input v-model="store.config.guild_id" class="w200" />
+          <el-input v-model="store.config.guild_id" class="w200" :disabled="locked" />
         </Field>
+        <el-button text size="small" class="lock" @click="locked = !locked">
+          {{ locked ? "解锁修改" : "锁定" }}
+        </el-button>
         <Field label="时区 (UTC 偏移, 重启生效)">
-          <el-input-number v-model="store.config.timezone" controls-position="right" class="w120" />
+          <el-input-number
+            v-model="store.config.timezone"
+            :min="-12"
+            :max="14"
+            controls-position="right"
+            class="w120"
+          />
         </Field>
       </div>
       <div class="row">
@@ -65,4 +76,5 @@ if (!store.config.pair) store.config.pair = [];
 .w160 { width: 160px; }
 .w180 { width: 180px; }
 .w200 { width: 200px; }
+.lock { margin-bottom: 4px; }
 </style>

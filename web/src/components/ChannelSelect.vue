@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { channels } from "../store";
+import { channels, store } from "../store";
 
 const props = defineProps({ modelValue: { type: String, default: "" } });
 defineEmits(["update:modelValue"]);
@@ -8,6 +8,8 @@ defineEmits(["update:modelValue"]);
 const missing = computed(
   () => props.modelValue && !channels.value.some((c) => c.name === props.modelValue),
 );
+// bot offline just means we can't verify — don't claim the channel is gone
+const missingNote = computed(() => (store.guild ? " (不存在)" : " (离线, 未验证)"));
 </script>
 
 <template>
@@ -21,7 +23,7 @@ const missing = computed(
     <el-option
       v-if="missing"
       :value="modelValue"
-      :label="'#' + modelValue + ' (不存在)'"
+      :label="'#' + modelValue + missingNote"
     />
     <el-option
       v-for="c in channels"

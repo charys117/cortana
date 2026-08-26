@@ -1,6 +1,5 @@
 <script setup>
 import { ref, watch } from "vue";
-import { ElMessage } from "element-plus";
 
 // Renaming an object key: edits a local draft, commits on change (enter/blur),
 // reverts when the new name is empty or already taken.

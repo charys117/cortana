@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from "vue";
+import zhCn from "element-plus/es/locale/lang/zh-cn";
 import { setToken } from "./api";
 import { dirty, discard, load, save, store } from "./store";
 import EmojiPicker from "./components/EmojiPicker.vue";
@@ -22,6 +23,7 @@ const NAV = [
 ];
 
 const saving = ref(false);
+const activeSec = ref("personas");
 
 // --- in-page token gate (replaces the old blocking prompt()) ---
 const tokenInput = ref("");
@@ -31,11 +33,12 @@ function submitToken() {
   if (!v) return;
   setToken(v);
   tokenInput.value = "";
-  load();
-}
-
-function scrollTo(id) {
-  document.getElementById("sec-" + id)?.scrollIntoView({ behavior: "smooth" });
+  store.needToken = false;
+  store.tokenMessage = "";
+  // token expired mid-session: the edits are still in store.config, retry the
+  // save instead of reloading over them
+  if (store.config && dirty.value) doSave();
+  else load();
 }
 
 async function doSave() {
@@ -47,25 +50,59 @@ async function doSave() {
   }
 }
 
+async function reload() {
+  if (dirty.value) {
+    try {
+      await ElMessageBox.confirm("重新加载将丢弃当前未保存的修改。", "放弃修改?", {
+        confirmButtonText: "丢弃并重新加载",
+        cancelButtonText: "取消",
+        type: "warning",
+      });
+    } catch {
+      return;
+    }
+  }
+  load();
+}
+
+function onScroll() {
+  if (!store.config) return;
+  let cur = NAV[0][0];
+  for (const [id] of NAV) {
+    const el = document.getElementById("sec-" + id);
+    if (el && el.getBoundingClientRect().top <= 120) cur = id;
+  }
+  // the last section can be too short to ever cross the threshold
+  if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 8) {
+    cur = NAV[NAV.length - 1][0];
+  }
+  activeSec.value = cur;
+}
+
 function beforeUnload(e) {
   if (dirty.value) e.preventDefault();
 }
 
 onMounted(() => {
   window.addEventListener("beforeunload", beforeUnload);
+  window.addEventListener("scroll", onScroll, { passive: true });
   load();
 });
-onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
+onUnmounted(() => {
+  window.removeEventListener("beforeunload", beforeUnload);
+  window.removeEventListener("scroll", onScroll);
+});
 </script>
 
 <template>
+  <el-config-provider :locale="zhCn">
   <div class="layout">
     <aside>
       <div class="brand">
         <img src="/favicon.svg" alt="" />
         <span>Cortana 配置台</span>
       </div>
-      <div class="guild-head">
+      <div v-if="store.guild || store.config" class="guild-head">
         <template v-if="store.guild">
           <img v-if="store.guild.guild.icon" :src="store.guild.guild.icon" alt="" />
           <div>
@@ -78,10 +115,19 @@ onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
         <div v-else class="g-sub">⚠️ bot 未连接, 服务器数据不可用</div>
       </div>
       <nav>
-        <a v-for="[id, label] in NAV" :key="id" @click="scrollTo(id)">{{ label }}</a>
+        <template v-if="store.config">
+          <a
+            v-for="[id, label] in NAV"
+            :key="id"
+            :href="'#sec-' + id"
+            :class="{ active: activeSec === id }"
+          >
+            {{ label }}
+          </a>
+        </template>
       </nav>
       <div class="side-actions">
-        <el-button class="reload" @click="load">重新加载</el-button>
+        <el-button class="reload" @click="reload">重新加载</el-button>
       </div>
     </aside>
 
@@ -113,9 +159,9 @@ onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
         </el-result>
       </div>
       <template v-else-if="store.config">
-        <h1>Cortana 配置台</h1>
+        <h1>{{ store.config.guild || "Cortana" }} 配置台</h1>
         <div class="subtitle">
-          修改后点击底部「保存到集群」即时生效 · config.yml 会自动更新
+          修改后点击底部「保存到集群」即时生效 · 配置保存在 PostgreSQL
         </div>
         <PersonasSection />
         <EmojiSection />
@@ -137,6 +183,7 @@ onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
   </transition>
 
   <EmojiPicker />
+  </el-config-provider>
 </template>
 
 <style scoped>
@@ -175,7 +222,9 @@ aside nav a {
   font-size: 15px;
   cursor: pointer;
 }
-aside nav a:hover { background: var(--ctn-hover); color: var(--el-text-color-primary); }
+aside nav a { text-decoration: none; }
+aside nav a:hover,
+aside nav a.active { background: var(--ctn-hover); color: var(--el-text-color-primary); }
 .side-actions { padding: 8px; }
 .reload { width: 100%; }
 
