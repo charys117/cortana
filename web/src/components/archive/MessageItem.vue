@@ -1,7 +1,15 @@
 <script setup>
 import { computed, ref } from "vue";
 import { emojiHtml, mdToHtml, toHex } from "../../emoji";
-import { arc, fmtShortTime, fmtSize, fmtTime, jumpTo, mediaUrl } from "../../archive";
+import {
+  arc,
+  fmtShortTime,
+  fmtSize,
+  fmtTime,
+  jumpTo,
+  mdResolve,
+  mediaUrl,
+} from "../../archive";
 
 const props = defineProps({
   msg: { type: Object, required: true },
@@ -23,12 +31,51 @@ const avatarColor = computed(() => {
 const isSystem = computed(
   () => props.msg.type !== "default" && props.msg.type !== "reply",
 );
-const contentHtml = computed(() => mdToHtml(props.msg.content || ""));
+const md = (t) => mdToHtml(t, mdResolve);
+const contentHtml = computed(() => md(props.msg.content || ""));
 const highlighted = computed(() => arc.jumpTarget === props.msg.id);
 
+// attachment id when an embed icon/image URL points at one of this message's
+// own attachments (sent with attachment:// refs, resolved by Discord)
+function attIdFromUrl(u) {
+  return String(u || "").match(/\/attachments\/\d+\/(\d+)\//)?.[1] || null;
+}
+
+// attachments consumed by embeds are hidden from the attachment list,
+// mirroring Discord's rendering
+const embedAttIds = computed(() => {
+  const ids = new Set();
+  for (const e of props.msg.embeds || []) {
+    for (const u of [
+      e.author?.icon_url,
+      e.footer?.icon_url,
+      e.image?.url,
+      e.thumbnail?.url,
+    ]) {
+      const id = attIdFromUrl(u);
+      if (id) ids.add(id);
+    }
+  }
+  return ids;
+});
+
 const plainAtts = computed(() =>
-  (props.msg.attachments || []).filter((a) => a.kind === "attachment"),
+  (props.msg.attachments || []).filter(
+    (a) => a.kind === "attachment" && !embedAttIds.value.has(a.id),
+  ),
 );
+
+// author/footer icon: prefer the locally archived attachment, else Discord's
+// proxy copy (cached at send time, survives the source URL dying), else the
+// original URL; http(s) only since embed URLs are message-author-controlled
+function iconSrc(part) {
+  if (!part) return null;
+  const att = (props.msg.attachments || []).find(
+    (a) => a.id === attIdFromUrl(part.icon_url),
+  );
+  if (att?.downloaded && att.url) return mediaUrl(att);
+  return safeUrl(part.proxy_icon_url) || safeUrl(part.icon_url);
+}
 
 // embed images were archived as attachment rows; pair them back by kind+order
 function embedMedia(index, kind) {
@@ -178,17 +225,31 @@ function jumpToReply() {
           class="embed"
           :style="{ borderLeftColor: embedColor(embed) }"
         >
-          <div v-if="embed.author?.name" class="embed-author">{{ embed.author.name }}</div>
+          <div v-if="embed.author?.name" class="embed-author">
+            <img
+              v-if="iconSrc(embed.author)"
+              class="embed-icon"
+              :src="iconSrc(embed.author)"
+              loading="lazy"
+              alt=""
+              @error="(e) => (e.target.style.display = 'none')"
+            />
+            <span>{{ embed.author.name }}</span>
+          </div>
           <div v-if="embed.title" class="embed-title">
-            <a v-if="safeUrl(embed.url)" :href="safeUrl(embed.url)" target="_blank" rel="noopener">
-              {{ embed.title }}
-            </a>
-            <template v-else>{{ embed.title }}</template>
+            <a
+              v-if="safeUrl(embed.url)"
+              :href="safeUrl(embed.url)"
+              target="_blank"
+              rel="noopener"
+              v-html="md(embed.title)"
+            />
+            <span v-else v-html="md(embed.title)" />
           </div>
           <div
             v-if="embed.description"
             class="embed-desc"
-            v-html="mdToHtml(embed.description)"
+            v-html="md(embed.description)"
           />
           <img
             v-if="embedMedia(i, 'embed_image')?.url"
@@ -205,7 +266,17 @@ function jumpToReply() {
             alt=""
             @error="(e) => (e.target.style.display = 'none')"
           />
-          <div v-if="embed.footer?.text" class="embed-footer">{{ embed.footer.text }}</div>
+          <div v-if="embed.footer?.text" class="embed-footer">
+            <img
+              v-if="iconSrc(embed.footer)"
+              class="embed-icon small"
+              :src="iconSrc(embed.footer)"
+              loading="lazy"
+              alt=""
+              @error="(e) => (e.target.style.display = 'none')"
+            />
+            <span>{{ embed.footer.text }}</span>
+          </div>
         </div>
 
         <!-- stickers -->
@@ -327,6 +398,42 @@ function jumpToReply() {
   padding: 1px 4px;
   font-size: 13px;
 }
+.content :deep(.md-pre),
+.embed-desc :deep(.md-pre) {
+  background: var(--ctn-input);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 4px 0;
+  overflow-x: auto;
+}
+.content :deep(.md-pre code),
+.embed-desc :deep(.md-pre code) { background: none; padding: 0; }
+.content :deep(.mention),
+.embed-desc :deep(.mention) {
+  background: rgba(88, 101, 242, 0.25);
+  color: var(--el-color-primary-light-3);
+  border-radius: 4px;
+  padding: 0 3px;
+  font-weight: 500;
+}
+.content :deep(.md-quote),
+.embed-desc :deep(.md-quote) {
+  display: block;
+  border-left: 4px solid var(--el-border-color);
+  padding-left: 10px;
+  margin: 2px 0;
+}
+.content :deep(.spoiler),
+.embed-desc :deep(.spoiler) {
+  background: var(--ctn-input);
+  color: transparent;
+  border-radius: 4px;
+  padding: 0 3px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.content :deep(.spoiler:hover),
+.embed-desc :deep(.spoiler:hover) { color: inherit; }
 .edited {
   font-size: 11px;
   color: var(--el-text-color-placeholder);
@@ -368,12 +475,24 @@ function jumpToReply() {
   max-width: 480px;
   font-size: 14px;
 }
-.embed-author { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.embed-author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.embed-icon { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+.embed-icon.small { width: 16px; height: 16px; }
 .embed-title { font-weight: 600; margin-bottom: 4px; }
 .embed-title a { color: var(--el-color-primary-light-3); text-decoration: none; }
 .embed-desc { color: var(--el-text-color-regular); word-break: break-word; }
 .embed-img { max-width: 100%; max-height: 300px; border-radius: 4px; margin-top: 8px; }
 .embed-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   color: var(--el-text-color-placeholder);
   margin-top: 6px;

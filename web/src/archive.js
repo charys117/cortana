@@ -164,6 +164,12 @@ export async function runSearch(more = false) {
   }
 }
 
+// mention-id -> name resolvers for mdToHtml, backed by the archive caches
+export const mdResolve = {
+  user: (id) => arc.users.find((u) => u.id === id)?.display_name,
+  channel: (id) => arc.channels.find((c) => c.id === id)?.name,
+};
+
 // media is fetched by <img>/<video>, which cannot send the auth header;
 // the backend accepts the token as a query param instead
 export function mediaUrl(att) {

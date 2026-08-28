@@ -27,6 +27,11 @@ function normalize(config) {
   config.archive_keyword ??= {};
   config.archive_embed ??= {};
   config.award ??= {};
+  // materialize backend defaults so the controls render the effective state
+  if (config.daily) {
+    config.daily.archive_notify ??= true; // absent means enabled
+    config.daily.time ??= "00:00"; // HH:MM in UTC
+  }
   return config;
 }
 

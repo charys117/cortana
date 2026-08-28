@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import os
-from datetime import timedelta, timezone
 
 import asyncpg
 import coloredlogs
@@ -26,7 +25,12 @@ def normalize_cfg(cfg):
     - board.*.unit_1/unit_10 -> board.*.units (list, index i == 10**i place)
     - missing top-level `pair` -> derived from board keys
     - legacy markdown `backup` section -> postgres `archive` section
+    - legacy `timezone` -> dropped; everything runs on UTC now and the web UI
+      renders times in the browser's timezone
     """
+    cfg.pop("timezone", None)
+    if "daily" in cfg:
+        cfg["daily"].setdefault("time", "00:00")
     for board in cfg.get("board", {}).values():
         if "units" not in board:
             units = [board.pop("unit_1", None), board.pop("unit_10", None)]
@@ -91,11 +95,13 @@ cfg = _loop.run_until_complete(_bootstrap_cfg())
 # set up httpx client and discord bot
 httpx_client = httpx.AsyncClient(proxy=os.getenv("PROXY"))
 bot = discord.Bot(intents=discord.Intents.all(), proxy=os.getenv("PROXY"))
-# set timezone
-tz = timezone(timedelta(hours=cfg["timezone"]))
 
 # keys injected at runtime by update_cfg(); never persisted
 RUNTIME_KEYS = ("channel", "member")
+
+# callables invoked after save_cfg hot-swaps the config (e.g. rescheduling the
+# daily task); registered by run.py
+cfg_change_hooks = []
 
 
 def update_cfg():
@@ -145,6 +151,11 @@ async def save_cfg(new_cfg):
     cfg.clear()
     cfg.update(new_cfg)
     cfg.update(runtime)
+    for hook in cfg_change_hooks:
+        try:
+            hook()
+        except Exception:
+            logging.getLogger("init").exception("cfg change hook failed")
 
 
 class Log:

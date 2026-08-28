@@ -4,13 +4,13 @@ Contains functions that are used in the main bot file.
 
 import asyncio
 import re
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import discord
 
 from src.core.archiver import archiver
 from src.core.cortana import cortana
-from src.core.init import Log, bot, cfg, tz
+from src.core.init import Log, bot, cfg
 from src.core.tools import daily_report, warning
 
 log = Log.get("func")
@@ -70,29 +70,42 @@ class Func:
     async def daily():
         ch_name = cfg["daily"]["channel"]
         channel = bot.get_channel(cfg["channel"][ch_name])
+        # avatars ride along as attachments: the shift below invalidates the
+        # old avatar hash while Discord's embed proxy fetches icon URLs at
+        # send time, so a URL icon randomly 404s and stays broken forever
+        offline_file = discord.File(cortana.avatar_path(), filename="offline.jpg")
         shift_embed = discord.Embed(
             description=cortana.get_lyric("offline"), color=cortana.color
         )
         shift_embed = shift_embed.set_author(
-            name=cortana.member.display_name, icon_url=cortana.member.avatar.url
+            name=cortana.display_name, icon_url="attachment://offline.jpg"
         )
         await cortana.random_change()
+        online_file = discord.File(cortana.avatar_path(), filename="online.jpg")
         online_embed = discord.Embed(
             description=cortana.get_lyric("online"), color=cortana.color
         )
         online_embed = online_embed.set_author(
-            name=cortana.member.display_name, icon_url=cortana.member.avatar.url
+            name=cortana.display_name, icon_url="attachment://online.jpg"
         )
-        daily_embed = await daily_report(datetime.now(tz).date() - timedelta(days=1))
-        await channel.send(embeds=[shift_embed, online_embed, daily_embed])
+        daily_embed = await daily_report(
+            datetime.now(UTC).date() - timedelta(days=1)
+        )
+        await channel.send(
+            embeds=[shift_embed, online_embed, daily_embed],
+            files=[offline_file, online_file],
+        )
         try:
             stats = await archiver.sync_all()
-            description = (
-                f"归档完成:新消息 {stats['new']},附件下载 {stats['downloaded']}"
-            )
-            if stats["failed"]:
-                description += f",下载失败 {stats['failed']}"
-            await channel.send(embed=discord.Embed(description=description))
+            # the sweep is only a safety net behind the real-time listeners, so
+            # its success notification can be turned off; failures always warn
+            if cfg["daily"].get("archive_notify", True):
+                description = (
+                    f"归档完成:新消息 {stats['new']},附件下载 {stats['downloaded']}"
+                )
+                if stats["failed"]:
+                    description += f",下载失败 {stats['failed']}"
+                await channel.send(embed=discord.Embed(description=description))
         except Exception as e:
             log.exception("daily archive failed")
             await warning(f"每日归档失败: {e}", channel=channel)

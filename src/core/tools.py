@@ -114,12 +114,13 @@ async def daily_report(date):
     ):
         if message.author == bot.user:
             continue
-        name = message.author.name
-        if name not in daily_message_count:
-            daily_message_count[name] = 0
-        daily_message_count[name] += 1
-    lines = ["今日消息数:"]
-    for name, count in daily_message_count.items():
-        lines.append(f"{name}: {count}")
+        author_id = message.author.id
+        if author_id not in daily_message_count:
+            daily_message_count[author_id] = 0
+        daily_message_count[author_id] += 1
+    lines = ["昨日消息数:"]
+    for author_id, count in daily_message_count.items():
+        # <@id> renders as a mention in the embed without pinging anyone
+        lines.append(f"<@{author_id}>: {count}")
     lines.append(f"共计{sum(daily_message_count.values())}条消息")
     return discord.Embed(title="**Daily Report**", description="\n".join(lines))

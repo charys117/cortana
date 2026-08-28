@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { arc, loadChannels, openChannel } from "../../archive";
+import { arc, loadChannels, loadUsers, openChannel } from "../../archive";
 import ChannelList from "./ChannelList.vue";
 import MessageList from "./MessageList.vue";
 import SearchPanel from "./SearchPanel.vue";
@@ -21,6 +21,7 @@ function retry() {
 }
 
 onMounted(async () => {
+  loadUsers(); // mention rendering needs the id -> name map
   if (!arc.channelsLoaded) await loadChannels();
   // deep link: /<channelId>
   const id = route.params.channelId;

@@ -7,6 +7,7 @@ reachable from outside the cluster.
 """
 
 import os
+import re
 import secrets
 
 from aiohttp import web
@@ -31,7 +32,6 @@ AVATAR_DIR = os.path.abspath("./src/assets/avatars")
 CONFIG_SCHEMA = {
     "guild": str,
     "guild_id": int,
-    "timezone": (int, float),
     "pair": list,
     "bark": dict,
     "emoji": dict,
@@ -44,7 +44,7 @@ CONFIG_SCHEMA = {
     "archive": dict,
     "daily": dict,
 }
-REQUIRED_KEYS = ("guild_id", "timezone", "emoji", "cortana", "board")
+REQUIRED_KEYS = ("guild_id", "emoji", "cortana", "board")
 
 
 def _validate(config):
@@ -69,6 +69,11 @@ def _validate(config):
         for field in ("display_name", "color", "online", "offline"):
             if field not in persona:
                 return f"cortana.{name} 缺少 {field}"
+    daily = config.get("daily")
+    if daily is not None:
+        t = daily.get("time", "00:00")
+        if not isinstance(t, str) or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", t):
+            return "daily.time 必须是 HH:MM (UTC, 24小时制)"
     return None
 
 

@@ -1,17 +1,24 @@
 import os
+from datetime import UTC
 from datetime import time as datetime_time
 
 from discord.ext import tasks
 
 import src.core.listeners  # noqa: F401  registers real-time archive listeners
 from src.core.cortana import cortana
-from src.core.init import Log, bot, cfg, tz, update_cfg
+from src.core.init import Log, bot, cfg, cfg_change_hooks, update_cfg
 from src.core.tools import warning
 from src.func.commands import Cmd
 from src.func.functions import Func
 from src.web.server import start_web
 
 log = Log.get("main")
+
+
+def _daily_time():
+    """The daily task's fire time from cfg, HH:MM in UTC."""
+    hour, minute = map(int, cfg["daily"].get("time", "00:00").split(":"))
+    return datetime_time(hour, minute, tzinfo=UTC)
 
 
 @bot.event
@@ -83,7 +90,7 @@ async def sync(ctx, full: bool = False):
     await Cmd.sync(ctx, full)
 
 
-@tasks.loop(time=datetime_time(0, 0, tzinfo=tz))
+@tasks.loop(time=_daily_time())
 async def daily():
     try:
         await Func.daily()
@@ -96,5 +103,22 @@ async def daily():
 
 
 daily.start()
+
+_daily_scheduled = _daily_time()
+
+
+def _reschedule_daily():
+    """Hot-apply a changed daily.time without restarting the bot."""
+    global _daily_scheduled
+    new_time = _daily_time()
+    if new_time == _daily_scheduled:
+        return
+    _daily_scheduled = new_time
+    daily.change_interval(time=new_time)
+    daily.restart()
+    log.info(f"daily task rescheduled to {new_time.strftime('%H:%M')} UTC")
+
+
+cfg_change_hooks.append(_reschedule_daily)
 
 bot.run(os.environ["DISCORD_BOT_TOKEN"])

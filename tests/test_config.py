@@ -16,8 +16,14 @@ def test_example_config_parses_with_current_schema():
         assert board["units"]
         assert "unit_1" not in board and "unit_10" not in board
     # keys the bot reads unconditionally at startup
-    for key in ("guild_id", "timezone", "cortana", "daily", "archive"):
+    for key in ("guild_id", "cortana", "daily", "archive"):
         assert key in cfg
+
+
+def test_normalize_cfg_drops_legacy_timezone_and_defaults_daily_time():
+    cfg = normalize_cfg({"timezone": -8, "daily": {"channel": "night"}})
+    assert "timezone" not in cfg
+    assert cfg["daily"]["time"] == "00:00"
 
 
 def test_normalize_cfg_upgrades_legacy_units():

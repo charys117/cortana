@@ -39,8 +39,16 @@ class TestValidate:
         assert "hacked" in _validate(config)
 
     def test_rejects_wrong_type(self, config):
-        config["timezone"] = "-8"
-        assert "timezone" in _validate(config)
+        config["pair"] = "alice,bob"
+        assert "pair" in _validate(config)
+
+    def test_rejects_bad_daily_time(self, config):
+        config["daily"]["time"] = "24:00"
+        assert "daily.time" in _validate(config)
+
+    def test_accepts_valid_daily_time(self, config):
+        config["daily"]["time"] = "23:59"
+        assert _validate(config) is None
 
     def test_rejects_board_missing_field(self, config):
         del config["board"]["alice"]["channel"]
