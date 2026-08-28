@@ -53,7 +53,7 @@ function channelName(r) {
       </el-input>
       <el-select v-model="s.channelId" placeholder="全部频道" clearable filterable>
         <el-option
-          v-for="c in arc.channels"
+          v-for="c in arc.channels.filter((c) => c.type !== 'category')"
           :key="c.id"
           :label="'# ' + c.name"
           :value="c.id"

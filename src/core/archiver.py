@@ -93,6 +93,8 @@ class Archiver:
             "name": channel.name,
             "type": str(channel.type),
             "parent_id": getattr(channel, "parent_id", None),
+            # threads carry no position; categories and text channels do
+            "position": getattr(channel, "position", None),
             "archived": bool(getattr(channel, "archived", False)),
             "updated_at": utcnow(),
         }
@@ -302,6 +304,12 @@ class Archiver:
         """
         guild = bot.get_guild(cfg["guild_id"])
         totals = {"new": 0, "updated": 0}
+        # categories have no messages of their own but the sidebar grouping
+        # in the web UI needs their names and positions
+        async with get_session() as session:
+            for category in guild.categories:
+                await self.upsert_channel(session, category)
+            await session.commit()
         for channel in guild.text_channels:
             if channel.name in self.exclude:
                 continue

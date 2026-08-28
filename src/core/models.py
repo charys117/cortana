@@ -47,6 +47,8 @@ class Channel(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(Text, nullable=False)
     parent_id: Mapped[int | None] = mapped_column(BigInteger)
+    # Discord sidebar sort position; None for threads and pre-migration rows
+    position: Mapped[int | None] = mapped_column(Integer)
     archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

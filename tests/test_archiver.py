@@ -108,8 +108,14 @@ class TestRowBuilders:
         )
         row = Archiver._channel_row(thread)
         assert row["parent_id"] == 5 and row["archived"] is True
+        assert row["position"] is None  # threads carry no sidebar position
 
     def test_channel_row_text_channel_defaults(self):
         ch = SimpleNamespace(id=5, name="chat", type="text")
         row = Archiver._channel_row(ch)
         assert row["parent_id"] is None and row["archived"] is False
+
+    def test_channel_row_captures_position(self):
+        ch = SimpleNamespace(id=5, name="chat", type="text", parent_id=3, position=2)
+        row = Archiver._channel_row(ch)
+        assert row["position"] == 2
