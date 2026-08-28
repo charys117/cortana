@@ -3,22 +3,55 @@ import { computed } from "vue";
 import { arc, openChannel } from "../../archive";
 
 const isThread = (c) => c.type.includes("thread");
+const isCategory = (c) => c.type === "category";
 
-// top-level channels with their threads nested; threads whose parent row is
-// missing from the archive fall back to a trailing "其他子区" group
-const grouped = computed(() => {
-  const tops = arc.channels.filter((c) => !isThread(c));
+// Discord sidebar order: position asc; null positions (threads, rows archived
+// before the position column existed) fall to the end, name as tiebreak
+const byPos = (a, b) =>
+  (a.position ?? Infinity) - (b.position ?? Infinity) ||
+  a.name.localeCompare(b.name);
+
+// flat render list mirroring the Discord sidebar: uncategorized channels
+// first, then each category as a label followed by its channels; threads
+// nest under their channel, and threads whose parent row is missing from
+// the archive fall back to a trailing "其他子区" group
+const items = computed(() => {
+  const categories = arc.channels.filter(isCategory).sort(byPos);
+  const catIds = new Set(categories.map((c) => c.id));
+  const tops = arc.channels
+    .filter((c) => !isThread(c) && !isCategory(c))
+    .sort(byPos);
   const topIds = new Set(tops.map((c) => c.id));
-  const byParent = {};
+
+  const threadsByParent = {};
   const orphans = [];
-  for (const t of arc.channels.filter(isThread)) {
+  for (const t of arc.channels.filter(isThread).sort(byPos)) {
     if (t.parent_id && topIds.has(t.parent_id)) {
-      (byParent[t.parent_id] ??= []).push(t);
+      (threadsByParent[t.parent_id] ??= []).push(t);
     } else {
       orphans.push(t);
     }
   }
-  return { tops, byParent, orphans };
+
+  const out = [];
+  const pushChannel = (c) => {
+    out.push({ kind: "channel", c });
+    for (const t of threadsByParent[c.id] || []) out.push({ kind: "thread", c: t });
+  };
+  for (const c of tops.filter((c) => !c.parent_id || !catIds.has(c.parent_id))) {
+    pushChannel(c);
+  }
+  for (const cat of categories) {
+    const chans = tops.filter((c) => c.parent_id === cat.id);
+    if (!chans.length) continue;
+    out.push({ kind: "label", c: cat });
+    for (const c of chans) pushChannel(c);
+  }
+  if (orphans.length) {
+    out.push({ kind: "label", c: { id: "orphans", name: "其他子区" } });
+    for (const t of orphans) out.push({ kind: "orphan", c: t });
+  }
+  return out;
 });
 
 function fmtCount(n) {
@@ -29,44 +62,24 @@ function fmtCount(n) {
 
 <template>
   <nav class="chan-list">
-    <template v-for="c in grouped.tops" :key="c.id">
+    <template v-for="it in items" :key="it.kind + '-' + it.c.id">
+      <div v-if="it.kind === 'label'" class="group-label">{{ it.c.name }}</div>
       <a
+        v-else
         class="chan"
-        :class="{ active: c.id === arc.currentChannelId, empty: !c.message_count }"
-        :href="'/' + c.id"
-        @click.prevent="openChannel(c.id)"
+        :class="{
+          thread: it.kind === 'thread',
+          active: it.c.id === arc.currentChannelId,
+          empty: !it.c.message_count,
+        }"
+        :href="'/' + it.c.id"
+        @click.prevent="openChannel(it.c.id)"
       >
-        <span class="glyph">#</span>
-        <span class="name">{{ c.name }}</span>
-        <span class="count">{{ fmtCount(c.message_count) }}</span>
-      </a>
-      <a
-        v-for="t in grouped.byParent[c.id] || []"
-        :key="t.id"
-        class="chan thread"
-        :class="{ active: t.id === arc.currentChannelId, empty: !t.message_count }"
-        :href="'/' + t.id"
-        @click.prevent="openChannel(t.id)"
-      >
-        <span class="glyph">└</span>
-        <span class="name">{{ t.name }}</span>
-        <span class="count">{{ fmtCount(t.message_count) }}</span>
-      </a>
-    </template>
-
-    <template v-if="grouped.orphans.length">
-      <div class="group-label">其他子区</div>
-      <a
-        v-for="t in grouped.orphans"
-        :key="t.id"
-        class="chan"
-        :class="{ active: t.id === arc.currentChannelId, empty: !t.message_count }"
-        :href="'/' + t.id"
-        @click.prevent="openChannel(t.id)"
-      >
-        <span class="glyph">🧵</span>
-        <span class="name">{{ t.name }}</span>
-        <span class="count">{{ fmtCount(t.message_count) }}</span>
+        <span class="glyph">{{
+          it.kind === "thread" ? "└" : it.kind === "orphan" ? "🧵" : "#"
+        }}</span>
+        <span class="name">{{ it.c.name }}</span>
+        <span class="count">{{ fmtCount(it.c.message_count) }}</span>
       </a>
     </template>
 

@@ -215,7 +215,9 @@ async def get_channels(_request):
             await session.execute(
                 select(Channel, SyncStatus.message_count, SyncStatus.last_sync_at)
                 .join(SyncStatus, SyncStatus.channel_id == Channel.id, isouter=True)
-                .order_by(Channel.name)
+                # sidebar order; position is NULL for threads and rows archived
+                # before the position column existed, so keep name as tiebreak
+                .order_by(Channel.position.nulls_last(), Channel.name)
             )
         ).all()
     return web.json_response(
@@ -226,6 +228,7 @@ async def get_channels(_request):
                     "name": c.name,
                     "type": c.type,
                     "parent_id": sid(c.parent_id),
+                    "position": c.position,
                     "archived": c.archived,
                     "message_count": count or 0,
                     "last_sync_at": iso(last_sync),
