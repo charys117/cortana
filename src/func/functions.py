@@ -88,9 +88,7 @@ class Func:
         online_embed = online_embed.set_author(
             name=cortana.display_name, icon_url="attachment://online.jpg"
         )
-        daily_embed = await daily_report(
-            datetime.now(UTC).date() - timedelta(days=1)
-        )
+        daily_embed = await daily_report(datetime.now(UTC).date() - timedelta(days=1))
         await channel.send(
             embeds=[shift_embed, online_embed, daily_embed],
             files=[offline_file, online_file],

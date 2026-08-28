@@ -319,9 +319,7 @@ class Cmd:
         embed = discord.Embed(
             description=cortana.get_lyric("offline"), color=cortana.color
         )
-        embed.set_author(
-            name=cortana.display_name, icon_url="attachment://offline.jpg"
-        )
+        embed.set_author(name=cortana.display_name, icon_url="attachment://offline.jpg")
         await message.respond(
             embed=embed,
             view=view,
