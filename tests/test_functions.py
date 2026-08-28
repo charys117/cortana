@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
+import discord
 import pytest
 
 from src.core.cortana import cortana
@@ -96,3 +97,50 @@ class TestArchiveEmbed:
         await Func.archive_embed(message)
 
         message.add_reaction.assert_not_awaited()
+
+
+class TestDaily:
+    async def test_embeds_attach_persona_avatars(self, cfg, monkeypatch):
+        """Author icons must be attachment:// refs, not CDN URLs: the shift
+        invalidates the old avatar hash while Discord's embed proxy fetches
+        icon URLs at send time, so URL icons randomly break forever."""
+        cfg["channel"] = {"night": 20}
+        cfg["daily"]["archive_notify"] = False
+        cfg["cortana"]["alfred"] = {
+            "display_name": "Alfred",
+            "color": 1,
+            "online": "hi",
+            "offline": "bye",
+        }
+        channel = SimpleNamespace(send=AsyncMock())
+        monkeypatch.setattr(
+            functions, "bot", SimpleNamespace(get_channel=Mock(return_value=channel))
+        )
+        monkeypatch.setattr(cortana, "name", "cortana")
+        monkeypatch.setattr(cortana, "display_name", "Cortana")
+        monkeypatch.setattr(cortana, "color", 123)
+
+        async def fake_change():
+            cortana.name = "alfred"
+            cortana.display_name = "Alfred"
+
+        monkeypatch.setattr(cortana, "random_change", fake_change)
+        monkeypatch.setattr(
+            functions, "daily_report", AsyncMock(return_value=discord.Embed())
+        )
+        monkeypatch.setattr(
+            functions.archiver,
+            "sync_all",
+            AsyncMock(return_value={"new": 0, "downloaded": 0, "failed": 0}),
+        )
+
+        await Func.daily()
+
+        channel.send.assert_awaited_once()
+        kwargs = channel.send.call_args.kwargs
+        offline_embed, online_embed = kwargs["embeds"][0], kwargs["embeds"][1]
+        assert offline_embed.author.icon_url == "attachment://offline.jpg"
+        assert offline_embed.author.name == "Cortana"
+        assert online_embed.author.icon_url == "attachment://online.jpg"
+        assert online_embed.author.name == "Alfred"
+        assert [f.filename for f in kwargs["files"]] == ["offline.jpg", "online.jpg"]

@@ -4,14 +4,14 @@ This module contains functions that handle various commands in a Discord bot.
 
 import random
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 
 import discord
 from discord.ui import Button, Select, View
 
 from src.core.archiver import archiver
 from src.core.cortana import cortana
-from src.core.init import bot, cfg, httpx_client, tz
+from src.core.init import bot, cfg, httpx_client
 from src.core.tools import format_units, identify, modify_board, warning
 
 
@@ -303,10 +303,15 @@ class Cmd:
             embed = discord.Embed(
                 description=cortana.get_lyric("online"), color=cortana.color
             )
+            # attached avatar instead of a CDN URL: the shift above just
+            # invalidated the old hash, linking by URL races the CDN purge
             embed.set_author(
-                name=cortana.member.display_name, icon_url=cortana.member.avatar.url
+                name=cortana.display_name, icon_url="attachment://online.jpg"
             )
-            await interaction.channel.send(embed=embed)
+            await interaction.channel.send(
+                embed=embed,
+                file=discord.File(cortana.avatar_path(), filename="online.jpg"),
+            )
 
         view = View()
         view.add_item(select)
@@ -314,10 +319,12 @@ class Cmd:
         embed = discord.Embed(
             description=cortana.get_lyric("offline"), color=cortana.color
         )
-        embed.set_author(
-            name=cortana.member.display_name, icon_url=cortana.member.avatar.url
+        embed.set_author(name=cortana.display_name, icon_url="attachment://offline.jpg")
+        await message.respond(
+            embed=embed,
+            view=view,
+            file=discord.File(cortana.avatar_path(), filename="offline.jpg"),
         )
-        await message.respond(embed=embed, view=view)
 
     @staticmethod
     async def roll(message, num):
@@ -394,7 +401,8 @@ class Cmd:
                 color=badge["color"],
             )
             embed.set_footer(text=description, icon_url=badge["owner"].avatar.url)
-            embed.timestamp = datetime.now(tz)
+            # Discord clients render embed timestamps in their own timezone
+            embed.timestamp = datetime.now(UTC)
             # reply
             await interaction.channel.send(content="已授予", embed=embed)
             await interaction.message.edit(content="已完成", view=None)

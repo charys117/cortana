@@ -1,8 +1,10 @@
 <script setup>
 import { ref, watch } from "vue";
 import { api } from "../../api";
-import { fmtTime } from "../../archive";
+import { fmtTime, mdResolve } from "../../archive";
 import { mdToHtml } from "../../emoji";
+
+const md = (t) => mdToHtml(t, mdResolve);
 
 const props = defineProps({
   message: { type: Object, default: null },
@@ -49,11 +51,11 @@ watch(
         <div class="v-head">
           版本 {{ i + 1 }} · 记录于 {{ fmtTime(v.captured_at) }}
         </div>
-        <div class="v-content" v-html="mdToHtml(v.content || '（无文本内容）')" />
+        <div class="v-content" v-html="md(v.content || '（无文本内容）')" />
       </div>
       <div class="version current">
         <div class="v-head">当前版本 · 编辑于 {{ fmtTime(message.edited_at) }}</div>
-        <div class="v-content" v-html="mdToHtml(message.content || '（无文本内容）')" />
+        <div class="v-content" v-html="md(message.content || '（无文本内容）')" />
       </div>
     </template>
   </el-dialog>

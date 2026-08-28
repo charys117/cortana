@@ -23,6 +23,14 @@ class Cortana:
                 self.color = cfg["cortana"][name]["color"]
                 break
 
+    def avatar_path(self):
+        """
+        Local avatar file of the current identity; uploaded to Discord on
+        shift, and attached to embeds instead of linking the CDN avatar (a
+        shift invalidates the old avatar hash, so URL icons can 404 forever).
+        """
+        return f"./src/assets/avatars/{self.name.lower()}.jpg"
+
     async def shift(self, name):
         """
         Shifts the Cortana object to a different identity.
@@ -33,7 +41,7 @@ class Cortana:
         self.name = name
         self.display_name = cfg["cortana"][name]["display_name"]
         self.color = cfg["cortana"][name]["color"]
-        with open(f"./src/assets/avatars/{self.name.lower()}.jpg", "rb") as fp:
+        with open(self.avatar_path(), "rb") as fp:
             await bot.user.edit(avatar=fp.read())
         await self.member.edit(nick=self.display_name)
         for role in self.member.roles:

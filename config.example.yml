@@ -4,7 +4,6 @@
 # your own values for that first boot.
 guild: MyGuild
 guild_id: 123456789012345678
-timezone: -8
 # the two members who use the bot; each is the other's notification receiver
 pair:
   - alice
@@ -72,3 +71,9 @@ archive:
   rescan_days: 7
 daily:
   channel: night
+  # fire time of the daily task, HH:MM in UTC (all times are kept in UTC; the
+  # web UI edits this in the browser's timezone). Hot-applied on save.
+  time: "00:00"
+  # whether the nightly archive sweep posts its completion summary; the sweep
+  # itself always runs (safety net behind real-time archiving), failures warn
+  archive_notify: true

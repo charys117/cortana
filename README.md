@@ -38,8 +38,11 @@ The bot serves a config editor (default `http://<host>:8080`) once it is ready:
   and the score boards
 - edit boards with a live message preview, personas, awards, bark
   notifications and archive rules
-- saving writes the config to PostgreSQL and hot-applies it — no restart needed
-  (only `timezone` requires a restart)
+- saving writes the config to PostgreSQL and hot-applies it — no restart
+  needed; that includes `daily.time` (the daily task reschedules itself)
+
+All timestamps are stored and scheduled in UTC (there is no timezone config);
+the web UI renders times in the browser's timezone.
 
 The frontend is a Vue 3 + Element Plus app in `web/`, served as static files
 by the bot's aiohttp server. The Docker build compiles it automatically; for a

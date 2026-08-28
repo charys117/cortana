@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { store } from "../store";
 import Field from "../components/Field.vue";
 import ChannelSelect from "../components/ChannelSelect.vue";
@@ -7,6 +7,26 @@ import MemberSelect from "../components/MemberSelect.vue";
 
 // guild name/id point the bot at the server itself — locked against slips
 const locked = ref(true);
+
+const pad2 = (n) => String(n).padStart(2, "0");
+
+// daily.time is stored as HH:MM UTC; the picker edits it in the browser's
+// timezone (conversion uses today's offset)
+const localDailyTime = computed({
+  get() {
+    const [h, m] = (store.config.daily.time ?? "00:00").split(":").map(Number);
+    const d = new Date();
+    d.setUTCHours(h, m, 0, 0);
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  },
+  set(v) {
+    if (!v) return;
+    const [h, m] = v.split(":").map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    store.config.daily.time = `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+  },
+});
 </script>
 
 <template>
@@ -23,15 +43,6 @@ const locked = ref(true);
         <el-button text size="small" class="lock" @click="locked = !locked">
           {{ locked ? "解锁修改" : "锁定" }}
         </el-button>
-        <Field label="时区 (UTC 偏移, 重启生效)">
-          <el-input-number
-            v-model="store.config.timezone"
-            :min="-12"
-            :max="14"
-            controls-position="right"
-            class="w120"
-          />
-        </Field>
       </div>
       <div class="row">
         <Field label="用户 A">
@@ -50,6 +61,18 @@ const locked = ref(true);
         <Field v-if="store.config.daily" label="每日播报频道">
           <ChannelSelect v-model="store.config.daily.channel" />
         </Field>
+        <Field v-if="store.config.daily" label="每日任务时间 (本地时区)">
+          <el-time-picker
+            v-model="localDailyTime"
+            format="HH:mm"
+            value-format="HH:mm"
+            :clearable="false"
+            class="w120"
+          />
+        </Field>
+        <Field v-if="store.config.daily" label="归档完成通知">
+          <el-switch v-model="store.config.daily.archive_notify" />
+        </Field>
         <template v-if="store.config.archive">
           <Field label="媒体存储目录">
             <el-input v-model="store.config.archive.media_root" class="w180" />
@@ -64,6 +87,10 @@ const locked = ref(true);
         </template>
       </div>
       <div class="hint">消息归档到 PostgreSQL (连接串走 DATABASE_URL 环境变量), 附件二进制存到媒体目录</div>
+      <div class="hint" v-if="store.config.daily">
+        每日任务时间按浏览器时区编辑, 存储为 UTC {{ store.config.daily.time }}, 保存后立即生效;
+        全量归档同步作为实时归档的兜底照常执行, 关闭通知仅不再发送"归档完成"消息, 失败时仍会告警
+      </div>
     </el-card>
   </section>
 </template>
